@@ -1,0 +1,44 @@
+name: Build QC Toolbox IPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: |
+          sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer || true
+          xcodebuild -version
+
+      - name: Build unsigned app
+        run: |
+          xcodebuild \
+            -project QCToolbox.xcodeproj \
+            -scheme QCToolbox \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Package unsigned IPA
+        run: |
+          mkdir -p Payload
+          cp -R build/Build/Products/Release-iphoneos/QCToolbox.app Payload/
+          zip -r QC-Toolbox-unsigned.ipa Payload
+          rm -rf Payload
+
+      - name: Upload unsigned IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: QC-Toolbox-unsigned-IPA
+          path: QC-Toolbox-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 14
