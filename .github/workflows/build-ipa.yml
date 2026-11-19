@@ -1,23 +1,30 @@
+
 name: Build QC Toolbox IPA
 
 on:
   workflow_dispatch:
   push:
-    branches: [ main ]
+    branches:
+      - main
+
+permissions:
+  contents: read
 
 jobs:
   build:
     runs-on: macos-14
+
     steps:
-      - name: Checkout
+      - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: Select Xcode
+      - name: Check Xcode
         run: |
-          sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer || true
+          echo "Available Xcode:"
+          ls -d /Applications/Xcode*.app || true
           xcodebuild -version
 
-      - name: Build unsigned app
+      - name: Build QC Toolbox
         run: |
           xcodebuild \
             -project QCToolbox.xcodeproj \
@@ -28,14 +35,22 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             build
 
-      - name: Package unsigned IPA
+      - name: Verify app
+        run: |
+          APP="build/Build/Products/Release-iphoneos/QCToolbox.app"
+          test -d "$APP"
+          echo "Build successful!"
+          ls -la "$APP"
+
+      - name: Package IPA
         run: |
           mkdir -p Payload
           cp -R build/Build/Products/Release-iphoneos/QCToolbox.app Payload/
-          zip -r QC-Toolbox-unsigned.ipa Payload
-          rm -rf Payload
+          zip -qr QC-Toolbox-unsigned.ipa Payload
+          test -f QC-Toolbox-unsigned.ipa
+          unzip -l QC-Toolbox-unsigned.ipa
 
-      - name: Upload unsigned IPA
+      - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
           name: QC-Toolbox-unsigned-IPA
