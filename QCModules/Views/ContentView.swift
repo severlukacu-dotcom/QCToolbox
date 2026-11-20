@@ -2,20 +2,14 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct ContentView: View {
-    @StateObject private var vm = FilzaViewModel()
+    @StateObject private var vm = FileBrowserViewModel()
 
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
                 pathBar
-                if vm.isLoading {
-                    ProgressView()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if vm.items.isEmpty {
-                    emptyState
-                } else {
-                    fileList
-                }
+                sortBar
+                content
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -26,8 +20,7 @@ struct ContentView: View {
                     .disabled(!vm.canGoBack)
                 }
                 ToolbarItem(placement: .principal) {
-                    Text(vm.currentName)
-                        .font(.headline)
+                    Text(vm.currentName).font(.headline)
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Menu {
@@ -39,7 +32,7 @@ struct ContentView: View {
                         }
                         Divider()
                         Button(action: { vm.showImporter = true }) {
-                            Label("Import file", systemImage: "square.and.arrow.down")
+                            Label("Import", systemImage: "square.and.arrow.down")
                         }
                         Button(action: { vm.refresh() }) {
                             Label("Làm mới", systemImage: "arrow.clockwise")
@@ -50,7 +43,7 @@ struct ContentView: View {
                 }
             }
             .sheet(item: $vm.selectedFile) { item in
-                FileEditorView(url: item.url)
+                TextEditorView(url: item.url)
             }
             .fileImporter(isPresented: $vm.showImporter, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
                 if case .success(let urls) = result {
@@ -58,38 +51,36 @@ struct ContentView: View {
                 }
             }
             .alert("Thư mục mới", isPresented: $vm.showNewFolder) {
-                TextField("Tên", text: $vm.inputName)
-                Button("Tạo", action: { vm.createFolder() })
-                Button("Hủy", role: .cancel, action: {})
+                TextField("Tên", text: $vm.input)
+                Button("Tạo") { vm.createFolder() }
+                Button("Hủy", role: .cancel) {}
             }
             .alert("File mới", isPresented: $vm.showNewFile) {
-                TextField("Tên file", text: $vm.inputName)
-                Button("Tạo", action: { vm.createFile() })
-                Button("Hủy", role: .cancel, action: {})
+                TextField("Tên file", text: $vm.input)
+                Button("Tạo") { vm.createFile() }
+                Button("Hủy", role: .cancel) {}
             }
             .alert("Đổi tên", isPresented: $vm.showRename) {
-                TextField("Tên mới", text: $vm.inputName)
-                Button("Đổi", action: { vm.performRename() })
-                Button("Hủy", role: .cancel, action: {})
+                TextField("Tên mới", text: $vm.input)
+                Button("Đổi") { vm.rename() }
+                Button("Hủy", role: .cancel) {}
             }
         }
         .navigationViewStyle(.stack)
         .preferredColorScheme(.dark)
-        .onAppear {
-            vm.load()
-        }
+        .onAppear { vm.load() }
     }
 
     private var pathBar: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 6) {
-                ForEach(Array(vm.pathComponents.enumerated()), id: \.offset) { idx, name in
-                    Button(action: { vm.goToPathIndex(idx) }) {
+            HStack(spacing: 4) {
+                ForEach(Array(vm.pathComponents.enumerated()), id: \.offset) { i, name in
+                    Button(action: { vm.goToIndex(i) }) {
                         Text(name)
                             .font(.caption)
-                            .foregroundColor(idx == vm.pathComponents.count - 1 ? .primary : .cyan)
+                            .foregroundColor(i == vm.pathComponents.count - 1 ? .primary : .cyan)
                     }
-                    if idx < vm.pathComponents.count - 1 {
+                    if i < vm.pathComponents.count - 1 {
                         Image(systemName: "chevron.right")
                             .font(.system(size: 8))
                             .foregroundColor(.secondary)
@@ -97,84 +88,101 @@ struct ContentView: View {
                 }
             }
             .padding(.horizontal, 12)
-            .padding(.vertical, 8)
+            .padding(.vertical, 6)
         }
         .background(Color(UIColor.secondarySystemBackground))
     }
 
-    private var emptyState: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "folder")
-                .font(.system(size: 48))
-                .foregroundColor(.secondary)
-            Text("Thư mục trống")
-                .foregroundColor(.secondary)
+    private var sortBar: some View {
+        Picker("Sắp xếp", selection: $vm.sort) {
+            Text("Tên").tag(SortOrder.name)
+            Text("Kích thước").tag(SortOrder.size)
+            Text("Ngày").tag(SortOrder.date)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .pickerStyle(.segmented)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .onChange(of: vm.sort) { _ in vm.refresh() }
     }
 
-    private var fileList: some View {
-        List {
-            ForEach(vm.items) { item in
-                FileRowView(item: item)
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        if item.isDirectory {
-                            vm.navigate(to: item.url)
-                        } else {
-                            vm.selectedFile = item
-                        }
-                    }
-                    .contextMenu {
-                        if !item.isDirectory {
-                            Button(action: { vm.selectedFile = item }) {
-                                Label("Mở", systemImage: "doc.text")
+    @ViewBuilder
+    private var content: some View {
+        if vm.isLoading {
+            ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else if vm.items.isEmpty {
+            VStack(spacing: 10) {
+                Image(systemName: "folder")
+                    .font(.system(size: 44))
+                    .foregroundColor(.secondary)
+                Text("Thư mục trống")
+                    .foregroundColor(.secondary)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            List {
+                ForEach(vm.items) { item in
+                    FileRow(item: item)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            if item.isDirectory {
+                                vm.open(item.url)
+                            } else {
+                                vm.selectedFile = item
                             }
                         }
-                        Button(action: {
-                            vm.itemToRename = item
-                            vm.inputName = item.name
-                            vm.showRename = true
-                        }) {
-                            Label("Đổi tên", systemImage: "pencil")
+                        .contextMenu {
+                            if !item.isDirectory {
+                                Button { vm.selectedFile = item } label: {
+                                    Label("Mở", systemImage: "doc.text")
+                                }
+                            }
+                            Button {
+                                vm.itemToRename = item
+                                vm.input = item.name
+                                vm.showRename = true
+                            } label: {
+                                Label("Đổi tên", systemImage: "pencil")
+                            }
+                            Button(role: .destructive) {
+                                vm.delete(item)
+                            } label: {
+                                Label("Xóa", systemImage: "trash")
+                            }
                         }
-                        Button(role: .destructive, action: { vm.delete(item) }) {
-                            Label("Xóa", systemImage: "trash")
-                        }
-                    }
+                }
             }
+            .listStyle(.plain)
         }
-        .listStyle(PlainListStyle())
     }
 }
 
-struct FileRowView: View {
-    let item: FileItem
+struct FileRow: View {
+    let item: BrowserItem
 
     var body: some View {
         HStack(spacing: 12) {
-            Image(systemName: item.iconName)
-                .font(.system(size: 22))
-                .foregroundColor(item.iconColor)
-                .frame(width: 32)
+            Image(systemName: item.icon)
+                .font(.system(size: 20))
+                .foregroundColor(item.color)
+                .frame(width: 28)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.name)
                     .font(.subheadline)
                     .lineLimit(1)
-                HStack(spacing: 6) {
+                HStack(spacing: 8) {
                     if !item.isDirectory {
-                        Text(item.sizeString)
+                        Text(item.sizeText)
                     }
-                    Text(item.modifiedString)
+                    Text(item.dateText)
                 }
-                .font(.caption)
+                .font(.caption2)
                 .foregroundColor(.secondary)
             }
             Spacer()
             if item.isDirectory {
                 Image(systemName: "chevron.right")
-                    .font(.caption)
+                    .font(.caption2)
                     .foregroundColor(.secondary)
             }
         }
@@ -182,7 +190,7 @@ struct FileRowView: View {
     }
 }
 
-struct FileEditorView: View {
+struct TextEditorView: View {
     let url: URL
     @State private var text = ""
     @Environment(\.dismiss) private var dismiss
@@ -211,7 +219,11 @@ struct FileEditorView: View {
     }
 }
 
-struct FileItem: Identifiable {
+enum SortOrder: String {
+    case name, size, date
+}
+
+struct BrowserItem: Identifiable {
     let id = UUID()
     let name: String
     let url: URL
@@ -219,125 +231,116 @@ struct FileItem: Identifiable {
     let size: Int64
     let modified: Date?
 
-    var sizeString: String {
+    var sizeText: String {
         ByteCountFormatter.string(fromByteCount: size, countStyle: .file)
     }
 
-    var modifiedString: String {
+    var dateText: String {
         guard let modified = modified else { return "" }
-        let formatter = DateFormatter()
-        formatter.dateStyle = .short
-        formatter.timeStyle = .short
-        return formatter.string(from: modified)
+        let f = DateFormatter()
+        f.dateStyle = .short
+        f.timeStyle = .short
+        return f.string(from: modified)
     }
 
-    var iconName: String {
+    var icon: String {
         if isDirectory { return "folder.fill" }
         switch url.pathExtension.lowercased() {
-        case "txt", "md", "json", "xml", "plist", "log":
-            return "doc.text.fill"
-        case "png", "jpg", "jpeg", "gif", "heic", "webp":
-            return "photo.fill"
-        case "mp4", "mov", "m4v":
-            return "film.fill"
-        case "mp3", "m4a", "wav", "aac":
-            return "music.note"
-        case "zip", "ipa", "tar", "gz":
-            return "doc.zipper"
-        case "pdf":
-            return "doc.richtext.fill"
-        default:
-            return "doc.fill"
+        case "txt", "md", "json", "xml", "plist", "log": return "doc.text.fill"
+        case "png", "jpg", "jpeg", "gif", "heic": return "photo.fill"
+        case "mp4", "mov": return "film.fill"
+        case "mp3", "m4a", "wav": return "music.note"
+        case "zip", "ipa": return "doc.zipper"
+        default: return "doc.fill"
         }
     }
 
-    var iconColor: Color {
-        isDirectory ? Color.yellow : Color.cyan
+    var color: Color {
+        isDirectory ? .yellow : .cyan
     }
 }
 
-class FilzaViewModel: ObservableObject {
-    @Published var items: [FileItem] = []
+class FileBrowserViewModel: ObservableObject {
+    @Published var items: [BrowserItem] = []
     @Published var isLoading = false
-    @Published var selectedFile: FileItem?
+    @Published var selectedFile: BrowserItem?
     @Published var showNewFolder = false
     @Published var showNewFile = false
     @Published var showRename = false
     @Published var showImporter = false
-    @Published var inputName = ""
-    @Published var itemToRename: FileItem?
+    @Published var input = ""
+    @Published var itemToRename: BrowserItem?
+    @Published var sort: SortOrder = .name
 
     private var history: [URL] = []
 
     private var currentURL: URL {
-        if let last = history.last {
-            return last
-        }
-        return FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        history.last ?? FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
     }
 
     var currentName: String {
-        let name = currentURL.lastPathComponent
-        return name == "Documents" ? "Documents" : name
+        let n = currentURL.lastPathComponent
+        return n == "Documents" ? "Documents" : n
     }
 
     var pathComponents: [String] {
         let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        var components = ["Documents"]
-        let relative = currentURL.path.replacingOccurrences(of: docs.path, with: "")
-        let parts = relative.split(separator: "/").map { String($0) }.filter { !$0.isEmpty }
-        components.append(contentsOf: parts)
-        return components
+        var c = ["Documents"]
+        let rel = currentURL.path.replacingOccurrences(of: docs.path, with: "")
+        let parts = rel.split(separator: "/").map { String($0) }.filter { !$0.isEmpty }
+        c.append(contentsOf: parts)
+        return c
     }
 
-    var canGoBack: Bool {
-        history.count > 1
-    }
+    var canGoBack: Bool { history.count > 1 }
 
     func load() {
-        if history.isEmpty {
-            history = [currentURL]
-        }
+        if history.isEmpty { history = [currentURL] }
         refresh()
     }
 
     func refresh() {
         isLoading = true
         let url = currentURL
+        let order = sort
         DispatchQueue.global(qos: .userInitiated).async {
-            var result: [FileItem] = []
+            var list: [BrowserItem] = []
             let fm = FileManager.default
             if let contents = try? fm.contentsOfDirectory(
                 at: url,
                 includingPropertiesForKeys: [.isDirectoryKey, .fileSizeKey, .contentModificationDateKey],
                 options: [.skipsHiddenFiles]
             ) {
-                for fileURL in contents {
-                    let values = try? fileURL.resourceValues(forKeys: [.isDirectoryKey, .fileSizeKey, .contentModificationDateKey])
-                    let item = FileItem(
-                        name: fileURL.lastPathComponent,
-                        url: fileURL,
-                        isDirectory: values?.isDirectory ?? false,
-                        size: Int64(values?.fileSize ?? 0),
-                        modified: values?.contentModificationDate
-                    )
-                    result.append(item)
+                for u in contents {
+                    let v = try? u.resourceValues(forKeys: [.isDirectoryKey, .fileSizeKey, .contentModificationDateKey])
+                    list.append(BrowserItem(
+                        name: u.lastPathComponent,
+                        url: u,
+                        isDirectory: v?.isDirectory ?? false,
+                        size: Int64(v?.fileSize ?? 0),
+                        modified: v?.contentModificationDate
+                    ))
                 }
             }
-            result.sort { a, b in
-                if a.isDirectory != b.isDirectory {
-                    return a.isDirectory
+            list.sort { a, b in
+                if a.isDirectory != b.isDirectory { return a.isDirectory }
+                switch order {
+                case .name:
+                    return a.name.localizedCaseInsensitiveCompare(b.name) == .orderedAscending
+                case .size:
+                    return a.size > b.size
+                case .date:
+                    return (a.modified ?? .distantPast) > (b.modified ?? .distantPast)
                 }
-                return a.name.localizedCaseInsensitiveCompare(b.name) == .orderedAscending
             }
             DispatchQueue.main.async {
-                self.items = result
+                self.items = list
                 self.isLoading = false
             }
         }
     }
 
-    func navigate(to url: URL) {
+    func open(_ url: URL) {
         history.append(url)
         refresh()
     }
@@ -349,52 +352,47 @@ class FilzaViewModel: ObservableObject {
         }
     }
 
-    func goToPathIndex(_ index: Int) {
-        let targetCount = index + 1
-        while history.count > targetCount {
-            history.removeLast()
-        }
+    func goToIndex(_ index: Int) {
+        let target = index + 1
+        while history.count > target { history.removeLast() }
         refresh()
     }
 
     func createFolder() {
-        let name = inputName.trimmingCharacters(in: .whitespaces)
-        if name.isEmpty { return }
-        let folderURL = currentURL.appendingPathComponent(name)
-        try? FileManager.default.createDirectory(at: folderURL, withIntermediateDirectories: false)
-        inputName = ""
+        let name = input.trimmingCharacters(in: .whitespaces)
+        guard !name.isEmpty else { return }
+        try? FileManager.default.createDirectory(at: currentURL.appendingPathComponent(name), withIntermediateDirectories: false)
+        input = ""
         refresh()
     }
 
     func createFile() {
-        let name = inputName.trimmingCharacters(in: .whitespaces)
-        if name.isEmpty { return }
-        let fileURL = currentURL.appendingPathComponent(name)
-        FileManager.default.createFile(atPath: fileURL.path, contents: Data())
-        inputName = ""
+        let name = input.trimmingCharacters(in: .whitespaces)
+        guard !name.isEmpty else { return }
+        FileManager.default.createFile(atPath: currentURL.appendingPathComponent(name).path, contents: Data())
+        input = ""
         refresh()
     }
 
-    func performRename() {
+    func rename() {
         guard let item = itemToRename else { return }
-        let name = inputName.trimmingCharacters(in: .whitespaces)
-        if name.isEmpty || name == item.name { return }
+        let name = input.trimmingCharacters(in: .whitespaces)
+        guard !name.isEmpty, name != item.name else { return }
         let newURL = item.url.deletingLastPathComponent().appendingPathComponent(name)
         try? FileManager.default.moveItem(at: item.url, to: newURL)
-        inputName = ""
+        input = ""
         itemToRename = nil
         refresh()
     }
 
-    func delete(_ item: FileItem) {
+    func delete(_ item: BrowserItem) {
         try? FileManager.default.removeItem(at: item.url)
         refresh()
     }
 
     func importFiles(_ urls: [URL]) {
         for url in urls {
-            let didAccess = url.startAccessingSecurityScopedResource()
-            if didAccess {
+            if url.startAccessingSecurityScopedResource() {
                 defer { url.stopAccessingSecurityScopedResource() }
                 let dest = currentURL.appendingPathComponent(url.lastPathComponent)
                 try? FileManager.default.copyItem(at: url, to: dest)
