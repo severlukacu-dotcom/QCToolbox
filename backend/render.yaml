@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: qc-video-backend
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: MONGO_URI
+        sync: false
+      - key: DB_NAME
+        value: qcvideo
