@@ -1,21 +1,20 @@
-# QC Files
+# QC Files (Filza Style)
 
-Ứng dụng quản lý file đơn giản kiểu Filza (SwiftUI).
+Ứng dụng quản lý file kiểu Filza (SwiftUI).
 
-Chỉ truy cập được thư mục **Documents** của app (sandbox).
+**Giới hạn**: Chỉ truy cập được thư mục Documents của app (sandbox). Không thể root toàn hệ thống như Filza jailbreak.
 
 ## Tính năng
-- Duyệt thư mục Documents
-- Vào / ra thư mục
-- Xem nội dung file text
-- Tạo thư mục mới
-- Tạo file mới
-- Xóa file / thư mục (vuốt trái)
+- Duyệt thư mục + thanh đường dẫn (path bar)
+- Icon theo loại file
+- Hiển thị kích thước + ngày sửa
+- Tạo thư mục / file mới
+- Import file từ bên ngoài
+- Đổi tên, xóa (context menu)
+- Mở và sửa file text (có nút Lưu)
+- Giao diện tối, gọn
 
-## Build IPA bằng GitHub Actions
-1. Vào tab **Actions**
-2. Chọn **Build QC Modules IPA**
-3. Nhấn **Run workflow**
-4. Tải artifact **QC-Modules-unsigned-IPA**
+## Build IPA
+Vào tab **Actions** → **Build QC Modules IPA** → **Run workflow**
 
-IPA chưa ký, cần sideload hoặc ký lại trước khi cài.
+IPA unsigned, cần sideload hoặc ký lại.
