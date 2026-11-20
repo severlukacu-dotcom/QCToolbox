@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
     <key>CFBundleDisplayName</key>
-    <string>QC Video</string>
+    <string>Domain Blocker</string>
 
     <key>CFBundleIdentifier</key>
     <string>com.quocchien.qcmodules</string>
@@ -30,14 +30,5 @@
 
     <key>UIViewControllerBasedStatusBarAppearance</key>
     <true/>
-
-    <key>NSPhotoLibraryUsageDescription</key>
-    <string>App cần truy cập thư viện ảnh để chọn video tải lên.</string>
-
-    <key>NSAppTransportSecurity</key>
-    <dict>
-        <key>NSAllowsArbitraryLoads</key>
-        <true/>
-    </dict>
 </dict>
 </plist>
