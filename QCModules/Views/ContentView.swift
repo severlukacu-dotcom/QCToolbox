@@ -9,7 +9,8 @@ struct ContentView: View {
             VStack(spacing: 0) {
                 pathBar
                 if vm.isLoading {
-                    ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
+                    ProgressView()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if vm.items.isEmpty {
                     emptyState
                 } else {
@@ -19,20 +20,33 @@ struct ContentView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button { vm.goBack() } label: { Image(systemName: "chevron.left") }
-                        .disabled(!vm.canGoBack)
+                    Button(action: { vm.goBack() }) {
+                        Image(systemName: "chevron.left")
+                    }
+                    .disabled(!vm.canGoBack)
                 }
                 ToolbarItem(placement: .principal) {
-                    Text(vm.currentName).font(.headline)
+                    Text(vm.currentName)
+                        .font(.headline)
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Menu {
-                        Button { vm.showNewFolder = true } label: { Label("Thư mục mới", systemImage: "folder.badge.plus") }
-                        Button { vm.showNewFile = true } label: { Label("File mới", systemImage: "doc.badge.plus") }
+                        Button(action: { vm.showNewFolder = true }) {
+                            Label("Thư mục mới", systemImage: "folder.badge.plus")
+                        }
+                        Button(action: { vm.showNewFile = true }) {
+                            Label("File mới", systemImage: "doc.badge.plus")
+                        }
                         Divider()
-                        Button { vm.showImporter = true } label: { Label("Import file", systemImage: "square.and.arrow.down") }
-                        Button { vm.refresh() } label: { Label("Làm mới", systemImage: "arrow.clockwise") }
-                    } label: { Image(systemName: "ellipsis.circle") }
+                        Button(action: { vm.showImporter = true }) {
+                            Label("Import file", systemImage: "square.and.arrow.down")
+                        }
+                        Button(action: { vm.refresh() }) {
+                            Label("Làm mới", systemImage: "arrow.clockwise")
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                    }
                 }
             }
             .sheet(item: $vm.selectedFile) { item in
@@ -45,56 +59,56 @@ struct ContentView: View {
             }
             .alert("Thư mục mới", isPresented: $vm.showNewFolder) {
                 TextField("Tên", text: $vm.inputName)
-                Button("Tạo") { vm.createFolder() }
-                Button("Hủy", role: .cancel) {}
+                Button("Tạo", action: { vm.createFolder() })
+                Button("Hủy", role: .cancel, action: {})
             }
             .alert("File mới", isPresented: $vm.showNewFile) {
                 TextField("Tên file", text: $vm.inputName)
-                Button("Tạo") { vm.createFile() }
-                Button("Hủy", role: .cancel) {}
+                Button("Tạo", action: { vm.createFile() })
+                Button("Hủy", role: .cancel, action: {})
             }
             .alert("Đổi tên", isPresented: $vm.showRename) {
                 TextField("Tên mới", text: $vm.inputName)
-                Button("Đổi") { vm.performRename() }
-                Button("Hủy", role: .cancel) {}
+                Button("Đổi", action: { vm.performRename() })
+                Button("Hủy", role: .cancel, action: {})
             }
         }
         .navigationViewStyle(.stack)
         .preferredColorScheme(.dark)
-        .onAppear { vm.load() }
+        .onAppear {
+            vm.load()
+        }
     }
 
     private var pathBar: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 6) {
                 ForEach(Array(vm.pathComponents.enumerated()), id: \.offset) { idx, name in
-                    Button {
-                        vm.goToPathIndex(idx)
-                    } label: {
+                    Button(action: { vm.goToPathIndex(idx) }) {
                         Text(name)
                             .font(.caption)
-                            .foregroundStyle(idx == vm.pathComponents.count - 1 ? .primary : .cyan)
+                            .foregroundColor(idx == vm.pathComponents.count - 1 ? .primary : .cyan)
                     }
                     if idx < vm.pathComponents.count - 1 {
                         Image(systemName: "chevron.right")
                             .font(.system(size: 8))
-                            .foregroundStyle(.secondary)
+                            .foregroundColor(.secondary)
                     }
                 }
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
         }
-        .background(Color(uiColor: .secondarySystemBackground))
+        .background(Color(UIColor.secondarySystemBackground))
     }
 
     private var emptyState: some View {
         VStack(spacing: 12) {
             Image(systemName: "folder")
                 .font(.system(size: 48))
-                .foregroundStyle(.secondary)
+                .foregroundColor(.secondary)
             Text("Thư mục trống")
-                .foregroundStyle(.secondary)
+                .foregroundColor(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -113,20 +127,24 @@ struct ContentView: View {
                     }
                     .contextMenu {
                         if !item.isDirectory {
-                            Button { vm.selectedFile = item } label: { Label("Mở", systemImage: "doc.text") }
+                            Button(action: { vm.selectedFile = item }) {
+                                Label("Mở", systemImage: "doc.text")
+                            }
                         }
-                        Button {
+                        Button(action: {
                             vm.itemToRename = item
                             vm.inputName = item.name
                             vm.showRename = true
-                        } label: { Label("Đổi tên", systemImage: "pencil") }
-                        Button(role: .destructive) {
-                            vm.delete(item)
-                        } label: { Label("Xóa", systemImage: "trash") }
+                        }) {
+                            Label("Đổi tên", systemImage: "pencil")
+                        }
+                        Button(role: .destructive, action: { vm.delete(item) }) {
+                            Label("Xóa", systemImage: "trash")
+                        }
                     }
             }
         }
-        .listStyle(.plain)
+        .listStyle(PlainListStyle())
     }
 }
 
@@ -137,7 +155,7 @@ struct FileRowView: View {
         HStack(spacing: 12) {
             Image(systemName: item.iconName)
                 .font(.system(size: 22))
-                .foregroundStyle(item.iconColor)
+                .foregroundColor(item.iconColor)
                 .frame(width: 32)
 
             VStack(alignment: .leading, spacing: 2) {
@@ -150,14 +168,14 @@ struct FileRowView: View {
                     }
                     Text(item.modifiedString)
                 }
-                .font(.caption2)
-                .foregroundStyle(.secondary)
+                .font(.caption)
+                .foregroundColor(.secondary)
             }
             Spacer()
             if item.isDirectory {
                 Image(systemName: "chevron.right")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
             }
         }
         .padding(.vertical, 2)
@@ -167,17 +185,13 @@ struct FileRowView: View {
 struct FileEditorView: View {
     let url: URL
     @State private var text = ""
-    @State private var isDirty = false
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         NavigationView {
             TextEditor(text: $text)
-                .font(.system(.body, design: .monospaced))
+                .font(Font.system(.body, design: .monospaced))
                 .padding(8)
-                .onChange(of: text) { newValue in
-                    isDirty = true
-                }
                 .navigationTitle(url.lastPathComponent)
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
@@ -187,14 +201,11 @@ struct FileEditorView: View {
                     ToolbarItem(placement: .navigationBarTrailing) {
                         Button("Lưu") {
                             try? text.write(to: url, atomically: true, encoding: .utf8)
-                            isDirty = false
                         }
-                        .disabled(!isDirty)
                     }
                 }
                 .onAppear {
                     text = (try? String(contentsOf: url, encoding: .utf8)) ?? ""
-                    isDirty = false
                 }
         }
     }
@@ -213,28 +224,35 @@ struct FileItem: Identifiable {
     }
 
     var modifiedString: String {
-        guard let modified else { return "" }
-        let f = DateFormatter()
-        f.dateStyle = .short
-        f.timeStyle = .short
-        return f.string(from: modified)
+        guard let modified = modified else { return "" }
+        let formatter = DateFormatter()
+        formatter.dateStyle = .short
+        formatter.timeStyle = .short
+        return formatter.string(from: modified)
     }
 
     var iconName: String {
         if isDirectory { return "folder.fill" }
         switch url.pathExtension.lowercased() {
-        case "txt", "md", "json", "xml", "plist", "log": return "doc.text.fill"
-        case "png", "jpg", "jpeg", "gif", "heic", "webp": return "photo.fill"
-        case "mp4", "mov", "m4v": return "film.fill"
-        case "mp3", "m4a", "wav", "aac": return "music.note"
-        case "zip", "ipa", "tar", "gz": return "doc.zipper"
-        case "pdf": return "doc.richtext.fill"
-        default: return "doc.fill"
+        case "txt", "md", "json", "xml", "plist", "log":
+            return "doc.text.fill"
+        case "png", "jpg", "jpeg", "gif", "heic", "webp":
+            return "photo.fill"
+        case "mp4", "mov", "m4v":
+            return "film.fill"
+        case "mp3", "m4a", "wav", "aac":
+            return "music.note"
+        case "zip", "ipa", "tar", "gz":
+            return "doc.zipper"
+        case "pdf":
+            return "doc.richtext.fill"
+        default:
+            return "doc.fill"
         }
     }
 
     var iconColor: Color {
-        isDirectory ? .yellow : .cyan
+        isDirectory ? Color.yellow : Color.cyan
     }
 }
 
@@ -250,54 +268,66 @@ class FilzaViewModel: ObservableObject {
     @Published var itemToRename: FileItem?
 
     private var history: [URL] = []
+
     private var currentURL: URL {
-        history.last ?? FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        if let last = history.last {
+            return last
+        }
+        return FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
     }
 
     var currentName: String {
-        let n = currentURL.lastPathComponent
-        return n == "Documents" ? "Documents" : n
+        let name = currentURL.lastPathComponent
+        return name == "Documents" ? "Documents" : name
     }
 
     var pathComponents: [String] {
         let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        var comps = ["Documents"]
+        var components = ["Documents"]
         let relative = currentURL.path.replacingOccurrences(of: docs.path, with: "")
-        let parts = relative.split(separator: "/").map(String.init).filter { !$0.isEmpty }
-        comps.append(contentsOf: parts)
-        return comps
+        let parts = relative.split(separator: "/").map { String($0) }.filter { !$0.isEmpty }
+        components.append(contentsOf: parts)
+        return components
     }
 
-    var canGoBack: Bool { history.count > 1 }
+    var canGoBack: Bool {
+        history.count > 1
+    }
 
     func load() {
-        if history.isEmpty { history = [currentURL] }
+        if history.isEmpty {
+            history = [currentURL]
+        }
         refresh()
     }
 
     func refresh() {
         isLoading = true
+        let url = currentURL
         DispatchQueue.global(qos: .userInitiated).async {
             var result: [FileItem] = []
             let fm = FileManager.default
             if let contents = try? fm.contentsOfDirectory(
-                at: self.currentURL,
+                at: url,
                 includingPropertiesForKeys: [.isDirectoryKey, .fileSizeKey, .contentModificationDateKey],
                 options: [.skipsHiddenFiles]
             ) {
-                for url in contents {
-                    let vals = try? url.resourceValues(forKeys: [.isDirectoryKey, .fileSizeKey, .contentModificationDateKey])
-                    result.append(FileItem(
-                        name: url.lastPathComponent,
-                        url: url,
-                        isDirectory: vals?.isDirectory ?? false,
-                        size: Int64(vals?.fileSize ?? 0),
-                        modified: vals?.contentModificationDate
-                    ))
+                for fileURL in contents {
+                    let values = try? fileURL.resourceValues(forKeys: [.isDirectoryKey, .fileSizeKey, .contentModificationDateKey])
+                    let item = FileItem(
+                        name: fileURL.lastPathComponent,
+                        url: fileURL,
+                        isDirectory: values?.isDirectory ?? false,
+                        size: Int64(values?.fileSize ?? 0),
+                        modified: values?.contentModificationDate
+                    )
+                    result.append(item)
                 }
             }
             result.sort { a, b in
-                if a.isDirectory != b.isDirectory { return a.isDirectory }
+                if a.isDirectory != b.isDirectory {
+                    return a.isDirectory
+                }
                 return a.name.localizedCaseInsensitiveCompare(b.name) == .orderedAscending
             }
             DispatchQueue.main.async {
@@ -313,9 +343,10 @@ class FilzaViewModel: ObservableObject {
     }
 
     func goBack() {
-        guard history.count > 1 else { return }
-        history.removeLast()
-        refresh()
+        if history.count > 1 {
+            history.removeLast()
+            refresh()
+        }
     }
 
     func goToPathIndex(_ index: Int) {
@@ -328,16 +359,18 @@ class FilzaViewModel: ObservableObject {
 
     func createFolder() {
         let name = inputName.trimmingCharacters(in: .whitespaces)
-        guard !name.isEmpty else { return }
-        try? FileManager.default.createDirectory(at: currentURL.appendingPathComponent(name), withIntermediateDirectories: false)
+        if name.isEmpty { return }
+        let folderURL = currentURL.appendingPathComponent(name)
+        try? FileManager.default.createDirectory(at: folderURL, withIntermediateDirectories: false)
         inputName = ""
         refresh()
     }
 
     func createFile() {
         let name = inputName.trimmingCharacters(in: .whitespaces)
-        guard !name.isEmpty else { return }
-        FileManager.default.createFile(atPath: currentURL.appendingPathComponent(name).path, contents: Data())
+        if name.isEmpty { return }
+        let fileURL = currentURL.appendingPathComponent(name)
+        FileManager.default.createFile(atPath: fileURL.path, contents: Data())
         inputName = ""
         refresh()
     }
@@ -345,7 +378,7 @@ class FilzaViewModel: ObservableObject {
     func performRename() {
         guard let item = itemToRename else { return }
         let name = inputName.trimmingCharacters(in: .whitespaces)
-        guard !name.isEmpty, name != item.name else { return }
+        if name.isEmpty || name == item.name { return }
         let newURL = item.url.deletingLastPathComponent().appendingPathComponent(name)
         try? FileManager.default.moveItem(at: item.url, to: newURL)
         inputName = ""
@@ -360,10 +393,12 @@ class FilzaViewModel: ObservableObject {
 
     func importFiles(_ urls: [URL]) {
         for url in urls {
-            guard url.startAccessingSecurityScopedResource() else { continue }
-            defer { url.stopAccessingSecurityScopedResource() }
-            let dest = currentURL.appendingPathComponent(url.lastPathComponent)
-            try? FileManager.default.copyItem(at: url, to: dest)
+            let didAccess = url.startAccessingSecurityScopedResource()
+            if didAccess {
+                defer { url.stopAccessingSecurityScopedResource() }
+                let dest = currentURL.appendingPathComponent(url.lastPathComponent)
+                try? FileManager.default.copyItem(at: url, to: dest)
+            }
         }
         refresh()
     }
