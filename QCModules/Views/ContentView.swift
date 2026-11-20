@@ -94,7 +94,13 @@ struct ContentView: View {
     }
 
     private var sortBar: some View {
-        Picker("Sắp xếp", selection: $vm.sort) {
+        Picker("Sắp xếp", selection: Binding(
+            get: { vm.sort },
+            set: { newValue in
+                vm.sort = newValue
+                vm.refresh()
+            }
+        )) {
             Text("Tên").tag(SortOrder.name)
             Text("Kích thước").tag(SortOrder.size)
             Text("Ngày").tag(SortOrder.date)
@@ -102,7 +108,6 @@ struct ContentView: View {
         .pickerStyle(.segmented)
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
-        .onChange(of: vm.sort) { _ in vm.refresh() }
     }
 
     @ViewBuilder
