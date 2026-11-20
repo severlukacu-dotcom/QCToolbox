@@ -18,6 +18,10 @@ jobs:
           xcodebuild -version
           xcode-select -p
 
+      - name: List schemes
+        run: |
+          xcodebuild -project QCModules.xcodeproj -list
+
       - name: Build unsigned app
         run: |
           xcodebuild \
@@ -32,14 +36,24 @@ jobs:
             CODE_SIGN_IDENTITY="" \
             PROVISIONING_PROFILE_SPECIFIER="" \
             DEVELOPMENT_TEAM="" \
-            build
+            ENABLE_BITCODE=NO \
+            ONLY_ACTIVE_ARCH=NO \
+            build 2>&1 | tee build.log
+          exit ${PIPESTATUS[0]}
+
+      - name: Show errors if failed
+        if: failure()
+        run: |
+          echo "=== Build log tail ==="
+          tail -n 100 build.log || true
+          grep -E "error:|Error:" build.log || true
 
       - name: Package unsigned IPA
         run: |
           APP_PATH=$(find build -name "QCModules.app" -type d | head -1)
           if [ -z "$APP_PATH" ]; then
             echo "App not found!"
-            find build -type d -name "*.app"
+            find build -type d -name "*.app" || true
             exit 1
           fi
           mkdir -p Payload
