@@ -3,6 +3,8 @@ import AVKit
 import UniformTypeIdentifiers
 import PhotosUI
 
+let API_BASE = "https://qctoolbox.onrender.com"
+
 struct ContentView: View {
     @StateObject private var auth = AuthManager()
     @StateObject private var uploads = UploadStore()
@@ -64,7 +66,7 @@ struct ContentView: View {
         }
         .navigationViewStyle(.stack)
         .preferredColorScheme(.dark)
-        .onAppear { uploads.load() }
+        .onAppear { uploads.loadRemote() }
     }
 
     private var searchBar: some View {
@@ -128,6 +130,7 @@ struct AccountView: View {
     @State private var password = ""
     @State private var isRegister = false
     @State private var message = ""
+    @State private var loading = false
 
     var body: some View {
         NavigationView {
@@ -145,17 +148,33 @@ struct AccountView: View {
                         TextField("Tên đăng nhập", text: $username)
                             .autocapitalization(.none)
                         SecureField("Mật khẩu", text: $password)
+                        if loading {
+                            ProgressView()
+                        }
                         if !message.isEmpty {
                             Text(message).foregroundColor(.red).font(.caption)
                         }
                         Button(isRegister ? "Tạo tài khoản" : "Đăng nhập") {
-                            if isRegister {
-                                message = auth.register(username: username, password: password) ? "" : "Tên đã tồn tại hoặc quá ngắn"
-                            } else {
-                                message = auth.login(username: username, password: password) ? "" : "Sai tên hoặc mật khẩu"
+                            loading = true
+                            message = ""
+                            Task {
+                                let ok: Bool
+                                if isRegister {
+                                    ok = await auth.registerRemote(username: username, password: password)
+                                } else {
+                                    ok = await auth.loginRemote(username: username, password: password)
+                                }
+                                await MainActor.run {
+                                    loading = false
+                                    if ok {
+                                        dismiss()
+                                    } else {
+                                        message = isRegister ? "Tên đã tồn tại hoặc lỗi kết nối" : "Sai tên hoặc mật khẩu"
+                                    }
+                                }
                             }
-                            if message.isEmpty { dismiss() }
                         }
+                        .disabled(loading)
                         Button(isRegister ? "Đã có tài khoản? Đăng nhập" : "Chưa có tài khoản? Đăng ký") {
                             isRegister.toggle()
                             message = ""
@@ -163,7 +182,7 @@ struct AccountView: View {
                         .font(.caption)
                     }
                     Section {
-                        Text("Tài khoản chỉ lưu trên máy này.")
+                        Text("Tài khoản lưu trên server.")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
@@ -209,7 +228,7 @@ struct UploadView: View {
                         Label("Chọn từ Files", systemImage: "folder")
                     }
                     if isProcessing {
-                        ProgressView("Đang xử lý...")
+                        ProgressView("Đang tải lên...")
                     }
                     if let url = selectedURL {
                         Text(url.lastPathComponent)
@@ -226,13 +245,23 @@ struct UploadView: View {
                             message = "Nhập tiêu đề và chọn video"
                             return
                         }
-                        uploads.add(
-                            title: title,
-                            channel: auth.currentUser ?? "User",
-                            description: description.isEmpty ? "Video của tôi" : description,
-                            sourceURL: url
-                        )
-                        dismiss()
+                        isProcessing = true
+                        Task {
+                            let ok = await uploads.uploadRemote(
+                                title: title,
+                                channel: auth.currentUser ?? "User",
+                                description: description.isEmpty ? "Video của tôi" : description,
+                                sourceURL: url
+                            )
+                            await MainActor.run {
+                                isProcessing = false
+                                if ok {
+                                    dismiss()
+                                } else {
+                                    message = "Tải lên thất bại"
+                                }
+                            }
+                        }
                     }
                     .disabled(title.isEmpty || selectedURL == nil || isProcessing)
                 }
@@ -392,7 +421,6 @@ class AuthManager: ObservableObject {
     @Published var currentUser: String?
     @Published var isLoggedIn = false
 
-    private let usersKey = "qc_users"
     private let sessionKey = "qc_session"
 
     init() {
@@ -402,26 +430,50 @@ class AuthManager: ObservableObject {
         }
     }
 
-    func register(username: String, password: String) -> Bool {
+    func registerRemote(username: String, password: String) async -> Bool {
         let name = username.trimmingCharacters(in: .whitespaces)
         guard name.count >= 3, password.count >= 3 else { return false }
-        var users = loadUsers()
-        guard users[name] == nil else { return false }
-        users[name] = password
-        saveUsers(users)
-        currentUser = name
-        isLoggedIn = true
-        UserDefaults.standard.set(name, forKey: sessionKey)
-        return true
+        guard let url = URL(string: "\(API_BASE)/api/register") else { return false }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try? JSONSerialization.data(withJSONObject: ["username": name, "password": password])
+        do {
+            let (data, res) = try await URLSession.shared.data(for: req)
+            guard let http = res as? HTTPURLResponse, http.statusCode == 200 else { return false }
+            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               json["success"] as? Bool == true {
+                await MainActor.run {
+                    self.currentUser = name
+                    self.isLoggedIn = true
+                    UserDefaults.standard.set(name, forKey: self.sessionKey)
+                }
+                return true
+            }
+        } catch {}
+        return false
     }
 
-    func login(username: String, password: String) -> Bool {
-        let users = loadUsers()
-        guard users[username] == password else { return false }
-        currentUser = username
-        isLoggedIn = true
-        UserDefaults.standard.set(username, forKey: sessionKey)
-        return true
+    func loginRemote(username: String, password: String) async -> Bool {
+        guard let url = URL(string: "\(API_BASE)/api/login") else { return false }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try? JSONSerialization.data(withJSONObject: ["username": username, "password": password])
+        do {
+            let (data, res) = try await URLSession.shared.data(for: req)
+            guard let http = res as? HTTPURLResponse, http.statusCode == 200 else { return false }
+            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               json["success"] as? Bool == true {
+                await MainActor.run {
+                    self.currentUser = username
+                    self.isLoggedIn = true
+                    UserDefaults.standard.set(username, forKey: self.sessionKey)
+                }
+                return true
+            }
+        } catch {}
+        return false
     }
 
     func logout() {
@@ -429,101 +481,84 @@ class AuthManager: ObservableObject {
         isLoggedIn = false
         UserDefaults.standard.removeObject(forKey: sessionKey)
     }
-
-    private func loadUsers() -> [String: String] {
-        UserDefaults.standard.dictionary(forKey: usersKey) as? [String: String] ?? [:]
-    }
-
-    private func saveUsers(_ users: [String: String]) {
-        UserDefaults.standard.set(users, forKey: usersKey)
-    }
 }
 
 class UploadStore: ObservableObject {
     @Published var videos: [VideoItem] = []
 
-    private var folder: URL {
-        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        let dir = docs.appendingPathComponent("Uploads")
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        return dir
-    }
-
-    private var metaURL: URL {
-        folder.appendingPathComponent("meta.json")
-    }
-
-    func load() {
-        guard let data = try? Data(contentsOf: metaURL),
-              let items = try? JSONDecoder().decode([UploadMeta].self, from: data) else {
-            videos = []
-            return
-        }
-        videos = items.compactMap { meta in
-            let url = folder.appendingPathComponent(meta.filename)
-            guard FileManager.default.fileExists(atPath: url.path) else { return nil }
-            return VideoItem(
-                id: meta.id,
-                title: meta.title,
-                channel: meta.channel,
-                views: "Video của tôi",
-                duration: "Local",
-                category: "Mine",
-                description: meta.description,
-                url: url
-            )
+    func loadRemote() {
+        guard let url = URL(string: "\(API_BASE)/api/videos") else { return }
+        Task {
+            do {
+                let (data, _) = try await URLSession.shared.data(from: url)
+                if let arr = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
+                    let items: [VideoItem] = arr.compactMap { dict in
+                        guard let title = dict["title"] as? String,
+                              let filename = dict["filename"] as? String,
+                              let videoURL = URL(string: "\(API_BASE)/uploads/\(filename)") else { return nil }
+                        let channel = dict["channel"] as? String ?? "User"
+                        let desc = dict["description"] as? String ?? ""
+                        return VideoItem(
+                            title: title,
+                            channel: channel,
+                            views: "Server",
+                            duration: "Cloud",
+                            category: "Mine",
+                            description: desc,
+                            url: videoURL
+                        )
+                    }
+                    await MainActor.run { self.videos = items }
+                }
+            } catch {}
         }
     }
 
-    func add(title: String, channel: String, description: String, sourceURL: URL) {
+    func uploadRemote(title: String, channel: String, description: String, sourceURL: URL) async -> Bool {
         let didAccess = sourceURL.startAccessingSecurityScopedResource()
         defer { if didAccess { sourceURL.stopAccessingSecurityScopedResource() } }
 
-        let filename = "\(UUID().uuidString).mp4"
-        let dest = folder.appendingPathComponent(filename)
+        guard let data = try? Data(contentsOf: sourceURL),
+              let url = URL(string: "\(API_BASE)/api/videos") else { return false }
+
+        let boundary = UUID().uuidString
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+
+        var body = Data()
+        func append(_ string: String) { body.append(string.data(using: .utf8)!) }
+
+        append("--\(boundary)\r\n")
+        append("Content-Disposition: form-data; name=\"title\"\r\n\r\n")
+        append("\(title)\r\n")
+
+        append("--\(boundary)\r\n")
+        append("Content-Disposition: form-data; name=\"channel\"\r\n\r\n")
+        append("\(channel)\r\n")
+
+        append("--\(boundary)\r\n")
+        append("Content-Disposition: form-data; name=\"description\"\r\n\r\n")
+        append("\(description)\r\n")
+
+        append("--\(boundary)\r\n")
+        append("Content-Disposition: form-data; name=\"video\"; filename=\"video.mp4\"\r\n")
+        append("Content-Type: video/mp4\r\n\r\n")
+        body.append(data)
+        append("\r\n")
+        append("--\(boundary)--\r\n")
+
+        req.httpBody = body
+
         do {
-            if FileManager.default.fileExists(atPath: dest.path) {
-                try FileManager.default.removeItem(at: dest)
+            let (_, res) = try await URLSession.shared.data(for: req)
+            if let http = res as? HTTPURLResponse, http.statusCode == 200 {
+                await MainActor.run { self.loadRemote() }
+                return true
             }
-            try FileManager.default.copyItem(at: sourceURL, to: dest)
-        } catch {
-            return
-        }
-
-        var metas = loadMetas()
-        let meta = UploadMeta(
-            id: UUID(),
-            title: title,
-            channel: channel,
-            description: description,
-            filename: filename
-        )
-        metas.insert(meta, at: 0)
-        saveMetas(metas)
-        load()
+        } catch {}
+        return false
     }
-
-    private func loadMetas() -> [UploadMeta] {
-        guard let data = try? Data(contentsOf: metaURL),
-              let items = try? JSONDecoder().decode([UploadMeta].self, from: data) else {
-            return []
-        }
-        return items
-    }
-
-    private func saveMetas(_ metas: [UploadMeta]) {
-        if let data = try? JSONEncoder().encode(metas) {
-            try? data.write(to: metaURL)
-        }
-    }
-}
-
-struct UploadMeta: Codable {
-    let id: UUID
-    let title: String
-    let channel: String
-    let description: String
-    let filename: String
 }
 
 enum VideoStore {
@@ -563,15 +598,6 @@ enum VideoStore {
             category: "Tech",
             description: "Phim khoa học viễn tưởng ngắn.",
             url: URL(string: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4")!
-        ),
-        VideoItem(
-            title: "Subaru Outback On Street And Dirt",
-            channel: "Garage419",
-            views: "1.1M lượt xem",
-            duration: "2:10",
-            category: "Travel",
-            description: "Video demo xe Subaru.",
-            url: URL(string: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnStreetAndDirt.mp4")!
         ),
         VideoItem(
             title: "For Bigger Fun",
