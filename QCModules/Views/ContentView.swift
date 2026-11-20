@@ -175,7 +175,9 @@ struct FileEditorView: View {
             TextEditor(text: $text)
                 .font(.system(.body, design: .monospaced))
                 .padding(8)
-                .onChange(of: text) { _ in isDirty = true }
+                .onChange(of: text) { newValue in
+                    isDirty = true
+                }
                 .navigationTitle(url.lastPathComponent)
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
@@ -317,7 +319,6 @@ class FilzaViewModel: ObservableObject {
     }
 
     func goToPathIndex(_ index: Int) {
-        // Simplified: just go back enough times
         let targetCount = index + 1
         while history.count > targetCount {
             history.removeLast()
