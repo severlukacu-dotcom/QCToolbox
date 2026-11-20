@@ -1,21 +1,25 @@
-# QC Video
+# Domain Blocker
 
-Ứng dụng xem video kiểu YouTube, kết nối backend Render + MongoDB.
+Ứng dụng quản lý danh sách domain chặn.
 
-## Backend
-- URL: https://qctoolbox.onrender.com
-- Đăng ký / Đăng nhập / Upload video qua API
+## Mặc định
+- fmipmobile.icloud.com
+- fmip.icloud.com
+- gs.apple.com
+- identity.apple.com
+- setup.icloud.com
+- appleid.apple.com
+- ax.init.itunes.apple.com
+- icloud.com
 
 ## Tính năng
-- Feed video + tìm kiếm + lọc danh mục
-- Đăng ký / Đăng nhập (lưu trên server)
-- Tải video từ Thư viện Ảnh hoặc Files
-- Video đã tải hiển thị từ server
-- Trình phát video
+- Bật / tắt từng domain
+- Thêm domain tùy chọn
+- Xóa domain tùy chọn
+- Lưu trên máy
 
 ## Lưu ý
-- Render free tier có thể ngủ, lần đầu gọi API hơi chậm.
-- Video lưu trên đĩa Render (có giới hạn).
+App chỉ quản lý danh sách. Để chặn thật sự cần dùng cùng Content Blocker Extension, Shadowrocket, hoặc proxy.
 
 ## Build IPA
 Vào **Actions** → **Build QC Modules IPA** → **Run workflow**
