@@ -1,2 +1,6 @@
-# Auto detect text files and perform LF normalization
 * text=auto
+*.pbxproj text eol=lf
+*.plist text eol=lf
+*.swift text eol=lf
+*.yml text eol=lf
+*.md text eol=lf

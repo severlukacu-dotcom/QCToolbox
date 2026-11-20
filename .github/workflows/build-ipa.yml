@@ -1,5 +1,4 @@
-
-name: Build QC Toolbox IPA
+name: Build QC Modules IPA
 
 on:
   workflow_dispatch:
@@ -17,29 +16,41 @@ jobs:
       - name: Select Xcode
         run: |
           xcodebuild -version
+          xcode-select -p
 
       - name: Build unsigned app
         run: |
           xcodebuild \
-            -project QCToolbox.xcodeproj \
-            -scheme QCToolbox \
+            -project QCModules.xcodeproj \
+            -scheme QCModules \
             -configuration Release \
             -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
             -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            PROVISIONING_PROFILE_SPECIFIER="" \
+            DEVELOPMENT_TEAM="" \
             build
 
       - name: Package unsigned IPA
         run: |
+          APP_PATH=$(find build -name "QCModules.app" -type d | head -1)
+          if [ -z "$APP_PATH" ]; then
+            echo "App not found!"
+            find build -type d -name "*.app"
+            exit 1
+          fi
           mkdir -p Payload
-          cp -R build/Build/Products/Release-iphoneos/QCToolbox.app Payload/
-          zip -r QC-Toolbox-unsigned.ipa Payload
+          cp -R "$APP_PATH" Payload/
+          zip -r QC-Modules-unsigned.ipa Payload
           rm -rf Payload
 
       - name: Upload unsigned IPA
         uses: actions/upload-artifact@v4
         with:
-          name: QC-Toolbox-unsigned-IPA
-          path: QC-Toolbox-unsigned.ipa
+          name: QC-Modules-unsigned-IPA
+          path: QC-Modules-unsigned.ipa
           if-no-files-found: error
           retention-days: 14
