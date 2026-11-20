@@ -1,202 +1,286 @@
 import SwiftUI
-import UIKit
-import Darwin
+import AVKit
 
 struct ContentView: View {
-    @StateObject private var info = DeviceInfo()
+    @State private var searchText = ""
+    @State private var selectedCategory = "All"
+    @State private var selectedVideo: VideoItem?
+
+    private let categories = ["All", "Nature", "Tech", "Music", "Travel"]
+
+    private var filtered: [VideoItem] {
+        let base = selectedCategory == "All"
+            ? VideoStore.all
+            : VideoStore.all.filter { $0.category == selectedCategory }
+        if searchText.isEmpty { return base }
+        return base.filter {
+            $0.title.localizedCaseInsensitiveContains(searchText) ||
+            $0.channel.localizedCaseInsensitiveContains(searchText)
+        }
+    }
 
     var body: some View {
         NavigationView {
-            List {
-                Section("Thiết bị") {
-                    InfoRow(title: "Tên hiển thị", value: info.deviceName)
-                    InfoRow(title: "Model máy", value: info.machine)
-                    InfoRow(title: "Loại", value: info.model)
-                    InfoRow(title: "Hệ điều hành", value: info.systemVersion)
-                    InfoRow(title: "Build OS", value: info.osBuild)
-                }
-
-                Section("Phần cứng") {
-                    InfoRow(title: "CPU", value: info.cpu)
-                    InfoRow(title: "Số nhân", value: info.cpuCores)
-                    InfoRow(title: "RAM", value: info.ram)
-                    InfoRow(title: "Architecture", value: info.arch)
-                }
-
-                Section("Màn hình") {
-                    InfoRow(title: "Kích thước (pt)", value: info.screenPoints)
-                    InfoRow(title: "Kích thước (px)", value: info.screenPixels)
-                    InfoRow(title: "Scale", value: info.screenScale)
-                    InfoRow(title: "Native Scale", value: info.nativeScale)
-                    InfoRow(title: "Safe Area Top", value: info.safeTop)
-                }
-
-                Section("Lưu trữ") {
-                    InfoRow(title: "Tổng", value: info.totalDisk)
-                    InfoRow(title: "Còn trống", value: info.freeDisk)
-                    InfoRow(title: "Đã dùng", value: info.usedDisk)
-                }
-
-                Section("Pin") {
-                    InfoRow(title: "Mức pin", value: info.batteryLevel)
-                    InfoRow(title: "Trạng thái", value: info.batteryState)
-                    InfoRow(title: "Low Power", value: info.lowPower)
-                }
-
-                Section("Định danh") {
-                    InfoRow(title: "IDFV (Vendor ID)", value: info.idfv)
-                    InfoRow(title: "Ghi chú", value: "Không phải UDID thật")
-                }
-
-                Section("Khác") {
-                    InfoRow(title: "Ngôn ngữ", value: info.language)
-                    InfoRow(title: "Múi giờ", value: info.timezone)
-                    InfoRow(title: "App Version", value: info.appVersion)
-                    InfoRow(title: "App Build", value: info.appBuild)
-                }
+            VStack(spacing: 0) {
+                searchBar
+                categoryBar
+                videoList
             }
-            .navigationTitle("Device Info")
+            .navigationTitle("QC Video")
             .navigationBarTitleDisplayMode(.inline)
-            .refreshable { info.refresh() }
+            .sheet(item: $selectedVideo) { video in
+                PlayerView(video: video)
+            }
         }
         .navigationViewStyle(.stack)
         .preferredColorScheme(.dark)
-        .onAppear { info.refresh() }
+    }
+
+    private var searchBar: some View {
+        HStack {
+            Image(systemName: "magnifyingglass")
+                .foregroundColor(.gray)
+            TextField("Tìm video...", text: $searchText)
+                .foregroundColor(.white)
+        }
+        .padding(10)
+        .background(Color.white.opacity(0.08))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+    }
+
+    private var categoryBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(categories, id: \.self) { cat in
+                    Button(action: { selectedCategory = cat }) {
+                        Text(cat)
+                            .font(.system(size: 13, weight: .medium))
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 6)
+                            .background(selectedCategory == cat ? Color.red : Color.white.opacity(0.1))
+                            .foregroundColor(selectedCategory == cat ? .white : .gray)
+                            .clipShape(Capsule())
+                    }
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.bottom, 8)
+        }
+    }
+
+    private var videoList: some View {
+        ScrollView {
+            LazyVStack(spacing: 16) {
+                ForEach(filtered) { video in
+                    VideoCard(video: video)
+                        .onTapGesture {
+                            selectedVideo = video
+                        }
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.bottom, 20)
+        }
     }
 }
 
-struct InfoRow: View {
-    let title: String
-    let value: String
+struct VideoCard: View {
+    let video: VideoItem
 
     var body: some View {
-        HStack(alignment: .top) {
-            Text(title)
-                .foregroundColor(.secondary)
-                .frame(maxWidth: 140, alignment: .leading)
-            Spacer()
-            Text(value)
-                .font(.system(.body, design: .monospaced))
-                .multilineTextAlignment(.trailing)
-                .lineLimit(3)
-                .minimumScaleFactor(0.6)
+        VStack(alignment: .leading, spacing: 8) {
+            ZStack(alignment: .bottomTrailing) {
+                Rectangle()
+                    .fill(Color.white.opacity(0.08))
+                    .aspectRatio(16/9, contentMode: .fit)
+                    .overlay(
+                        Image(systemName: "play.rectangle.fill")
+                            .font(.system(size: 40))
+                            .foregroundColor(.white.opacity(0.4))
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+
+                Text(video.duration)
+                    .font(.system(size: 11, weight: .semibold))
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Color.black.opacity(0.7))
+                    .foregroundColor(.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
+                    .padding(6)
+            }
+
+            HStack(alignment: .top, spacing: 10) {
+                Circle()
+                    .fill(Color.red.opacity(0.8))
+                    .frame(width: 36, height: 36)
+                    .overlay(
+                        Text(String(video.channel.prefix(1)))
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundColor(.white)
+                    )
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(video.title)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(.white)
+                        .lineLimit(2)
+
+                    Text("\(video.channel) · \(video.views)")
+                        .font(.system(size: 12))
+                        .foregroundColor(.gray)
+                }
+            }
         }
     }
 }
 
-class DeviceInfo: ObservableObject {
-    @Published var deviceName = "-"
-    @Published var machine = "-"
-    @Published var model = "-"
-    @Published var systemVersion = "-"
-    @Published var osBuild = "-"
+struct PlayerView: View {
+    let video: VideoItem
+    @Environment(\.dismiss) private var dismiss
 
-    @Published var cpu = "-"
-    @Published var cpuCores = "-"
-    @Published var ram = "-"
-    @Published var arch = "-"
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 0) {
+                VideoPlayer(player: AVPlayer(url: video.url))
+                    .aspectRatio(16/9, contentMode: .fit)
+                    .background(Color.black)
 
-    @Published var screenPoints = "-"
-    @Published var screenPixels = "-"
-    @Published var screenScale = "-"
-    @Published var nativeScale = "-"
-    @Published var safeTop = "-"
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text(video.title)
+                            .font(.system(size: 18, weight: .bold))
+                            .foregroundColor(.white)
 
-    @Published var totalDisk = "-"
-    @Published var freeDisk = "-"
-    @Published var usedDisk = "-"
+                        Text("\(video.channel) · \(video.views)")
+                            .font(.system(size: 14))
+                            .foregroundColor(.gray)
 
-    @Published var batteryLevel = "-"
-    @Published var batteryState = "-"
-    @Published var lowPower = "-"
-
-    @Published var idfv = "-"
-
-    @Published var language = "-"
-    @Published var timezone = "-"
-    @Published var appVersion = "-"
-    @Published var appBuild = "-"
-
-    func refresh() {
-        let device = UIDevice.current
-        device.isBatteryMonitoringEnabled = true
-
-        deviceName = device.name
-        model = device.model
-        systemVersion = "\(device.systemName) \(device.systemVersion)"
-
-        machine = Self.sysctlString("hw.machine") ?? "-"
-        osBuild = Self.sysctlString("kern.osversion") ?? "-"
-        cpu = Self.sysctlString("machdep.cpu.brand_string")
-            ?? Self.sysctlString("hw.model")
-            ?? machine
-
-        cpuCores = "\(ProcessInfo.processInfo.activeProcessorCount)"
-
-        let physical = ProcessInfo.processInfo.physicalMemory
-        ram = ByteCountFormatter.string(fromByteCount: Int64(physical), countStyle: .memory)
-
-        #if arch(arm64)
-        arch = "arm64"
-        #elseif arch(x86_64)
-        arch = "x86_64"
-        #else
-        arch = "unknown"
-        #endif
-
-        let screen = UIScreen.main
-        let bounds = screen.bounds
-        screenPoints = "\(Int(bounds.width)) × \(Int(bounds.height))"
-        screenScale = String(format: "%.1fx", screen.scale)
-        nativeScale = String(format: "%.1fx", screen.nativeScale)
-        let pxW = Int(bounds.width * screen.scale)
-        let pxH = Int(bounds.height * screen.scale)
-        screenPixels = "\(pxW) × \(pxH)"
-
-        if let window = UIApplication.shared.windows.first(where: { $0.isKeyWindow }) ?? UIApplication.shared.windows.first {
-            safeTop = "\(Int(window.safeAreaInsets.top)) pt"
+                        Text(video.description)
+                            .font(.system(size: 14))
+                            .foregroundColor(.white.opacity(0.8))
+                            .padding(.top, 8)
+                    }
+                    .padding(16)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+            .background(Color.black)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Đóng") { dismiss() }
+                }
+            }
         }
-
-        if let attrs = try? FileManager.default.attributesOfFileSystem(forPath: NSHomeDirectory()),
-           let total = attrs[.systemSize] as? Int64,
-           let free = attrs[.systemFreeSize] as? Int64 {
-            let formatter = ByteCountFormatter()
-            formatter.countStyle = .file
-            totalDisk = formatter.string(fromByteCount: total)
-            freeDisk = formatter.string(fromByteCount: free)
-            usedDisk = formatter.string(fromByteCount: max(0, total - free))
-        }
-
-        let level = device.batteryLevel
-        batteryLevel = level < 0 ? "Không hỗ trợ" : "\(Int(level * 100))%"
-
-        switch device.batteryState {
-        case .charging: batteryState = "Đang sạc"
-        case .full: batteryState = "Đầy"
-        case .unplugged: batteryState = "Rút sạc"
-        case .unknown: batteryState = "Không rõ"
-        @unknown default: batteryState = "Không rõ"
-        }
-
-        lowPower = ProcessInfo.processInfo.isLowPowerModeEnabled ? "Bật" : "Tắt"
-
-        idfv = device.identifierForVendor?.uuidString ?? "Không có"
-
-        language = Locale.current.identifier
-        timezone = TimeZone.current.identifier
-
-        let info = Bundle.main.infoDictionary
-        appVersion = info?["CFBundleShortVersionString"] as? String ?? "-"
-        appBuild = info?["CFBundleVersion"] as? String ?? "-"
+        .preferredColorScheme(.dark)
     }
+}
 
-    private static func sysctlString(_ name: String) -> String? {
-        var size = 0
-        sysctlbyname(name, nil, &size, nil, 0)
-        guard size > 0 else { return nil }
-        var buffer = [CChar](repeating: 0, count: size)
-        let result = sysctlbyname(name, &buffer, &size, nil, 0)
-        guard result == 0 else { return nil }
-        return String(cString: buffer)
-    }
+struct VideoItem: Identifiable {
+    let id = UUID()
+    let title: String
+    let channel: String
+    let views: String
+    let duration: String
+    let category: String
+    let description: String
+    let url: URL
+}
+
+enum VideoStore {
+    static let all: [VideoItem] = [
+        VideoItem(
+            title: "Big Buck Bunny",
+            channel: "Blender Foundation",
+            views: "12M lượt xem",
+            duration: "9:56",
+            category: "Nature",
+            description: "Phim hoạt hình ngắn của Blender Foundation.",
+            url: URL(string: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4")!
+        ),
+        VideoItem(
+            title: "Elephant Dream",
+            channel: "Orange Open Movie",
+            views: "3.2M lượt xem",
+            duration: "10:53",
+            category: "Nature",
+            description: "Phim mở đầu tiên của Blender.",
+            url: URL(string: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4")!
+        ),
+        VideoItem(
+            title: "Sintel",
+            channel: "Blender Foundation",
+            views: "8.1M lượt xem",
+            duration: "14:48",
+            category: "Nature",
+            description: "Phim hoạt hình Sintel.",
+            url: URL(string: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4")!
+        ),
+        VideoItem(
+            title: "Tears of Steel",
+            channel: "Blender Foundation",
+            views: "5.4M lượt xem",
+            duration: "12:14",
+            category: "Tech",
+            description: "Phim khoa học viễn tưởng ngắn.",
+            url: URL(string: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4")!
+        ),
+        VideoItem(
+            title: "Subaru Outback On Street And Dirt",
+            channel: "Garage419",
+            views: "1.1M lượt xem",
+            duration: "2:10",
+            category: "Travel",
+            description: "Video demo xe Subaru.",
+            url: URL(string: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnStreetAndDirt.mp4")!
+        ),
+        VideoItem(
+            title: "For Bigger Blazes",
+            channel: "Google",
+            views: "890K lượt xem",
+            duration: "0:15",
+            category: "Tech",
+            description: "Video mẫu Google.",
+            url: URL(string: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4")!
+        ),
+        VideoItem(
+            title: "For Bigger Escape",
+            channel: "Google",
+            views: "2.3M lượt xem",
+            duration: "0:15",
+            category: "Travel",
+            description: "Video mẫu Google.",
+            url: URL(string: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4")!
+        ),
+        VideoItem(
+            title: "For Bigger Fun",
+            channel: "Google",
+            views: "1.8M lượt xem",
+            duration: "0:15",
+            category: "Music",
+            description: "Video mẫu Google.",
+            url: URL(string: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4")!
+        ),
+        VideoItem(
+            title: "For Bigger Joyrides",
+            channel: "Google",
+            views: "960K lượt xem",
+            duration: "0:15",
+            category: "Travel",
+            description: "Video mẫu Google.",
+            url: URL(string: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4")!
+        ),
+        VideoItem(
+            title: "For Bigger Meltdowns",
+            channel: "Google",
+            views: "1.4M lượt xem",
+            duration: "0:15",
+            category: "Music",
+            description: "Video mẫu Google.",
+            url: URL(string: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4")!
+        )
+    ]
 }
