@@ -1,6 +1,7 @@
 import SwiftUI
 import AVKit
 import UniformTypeIdentifiers
+import PhotosUI
 
 struct ContentView: View {
     @StateObject private var auth = AuthManager()
@@ -186,9 +187,12 @@ struct UploadView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var title = ""
     @State private var description = ""
-    @State private var showPicker = false
+    @State private var showFilePicker = false
+    @State private var showPhotoPicker = false
     @State private var selectedURL: URL?
+    @State private var photoItem: PhotosPickerItem?
     @State private var message = ""
+    @State private var isProcessing = false
 
     var body: some View {
         NavigationView {
@@ -197,8 +201,16 @@ struct UploadView: View {
                     TextField("Tiêu đề", text: $title)
                     TextField("Mô tả", text: $description)
                 }
-                Section("Video") {
-                    Button("Chọn file video") { showPicker = true }
+                Section("Chọn video") {
+                    Button(action: { showPhotoPicker = true }) {
+                        Label("Chọn từ Thư viện Ảnh", systemImage: "photo.on.rectangle")
+                    }
+                    Button(action: { showFilePicker = true }) {
+                        Label("Chọn từ Files", systemImage: "folder")
+                    }
+                    if isProcessing {
+                        ProgressView("Đang xử lý...")
+                    }
                     if let url = selectedURL {
                         Text(url.lastPathComponent)
                             .font(.caption)
@@ -222,7 +234,7 @@ struct UploadView: View {
                         )
                         dismiss()
                     }
-                    .disabled(title.isEmpty || selectedURL == nil)
+                    .disabled(title.isEmpty || selectedURL == nil || isProcessing)
                 }
             }
             .navigationTitle("Tải video")
@@ -232,10 +244,31 @@ struct UploadView: View {
                     Button("Hủy") { dismiss() }
                 }
             }
-            .fileImporter(isPresented: $showPicker, allowedContentTypes: [.movie, .video, .mpeg4Movie]) { result in
+            .fileImporter(isPresented: $showFilePicker, allowedContentTypes: [.movie, .video, .mpeg4Movie]) { result in
                 if case .success(let url) = result {
                     selectedURL = url
                     message = ""
+                }
+            }
+            .photosPicker(isPresented: $showPhotoPicker, selection: $photoItem, matching: .videos)
+            .onChange(of: photoItem) { newItem in
+                guard let newItem = newItem else { return }
+                isProcessing = true
+                message = ""
+                Task {
+                    if let data = try? await newItem.loadTransferable(type: Data.self) {
+                        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent("\(UUID().uuidString).mp4")
+                        try? data.write(to: tempURL)
+                        await MainActor.run {
+                            selectedURL = tempURL
+                            isProcessing = false
+                        }
+                    } else {
+                        await MainActor.run {
+                            message = "Không đọc được video"
+                            isProcessing = false
+                        }
+                    }
                 }
             }
         }
