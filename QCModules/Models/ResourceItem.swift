@@ -19,7 +19,8 @@ struct ResourceStore {
         ResourceItem(
             name: "YouTube No Ads",
             description: "Loại bỏ quảng cáo YouTube, hỗ trợ PiP và phát nền",
-            url: "https://gitlab.com/chienq895/module-ad-config/-/raw/main/youtubepro.module,
+            url: "https://gitlab.com/chienq895/module-ad-config/-/raw/main/youtubepro.module",
+            type: .module,
             symbol: "play.rectangle.fill"
         ),
         ResourceItem(
@@ -32,19 +33,20 @@ struct ResourceStore {
         ResourceItem(
             name: "PicsArt Premium",
             description: "Kích hoạt Premium cho PicsArt",
-            url: "https://github.com/QuocChienn2709/quocchiennshadowrocket/raw/refs/heads/main/picsart.module,
+            url: "https://github.com/QuocChienn2709/quocchiennshadowrocket/raw/refs/heads/main/picsart.module",
             type: .module,
             symbol: "shield.fill"
         ),
         ResourceItem(
             name: "Spotify",
             description: "Hỗ trợ Spotify (một số tính năng)",
-            url: "https://gitlab.com/chienq895/module-ad-config/-/raw/main/spotifyVIP.module,
+            url: "https://gitlab.com/chienq895/module-ad-config/-/raw/main/spotifyVIP.module",
+            type: .module,
             symbol: "music.note.list"
         ),
         ResourceItem(
             name: "Alight Motion Pro",
-            description: "Unlock Pro  Alight Motion",
+            description: "Unlock Pro Alight Motion",
             url: "https://raw.githubusercontent.com/QuocChienn2709/quocchiennshadowrocket/refs/heads/main/alightmotion.module",
             type: .module,
             symbol: "xmark.shield.fill"
