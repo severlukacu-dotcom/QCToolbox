@@ -8,25 +8,31 @@ struct ContentView: View {
     @State private var showAlert = false
     @State private var alertMessage = ""
 
+    private let tabs = [
+        (title: "Modules", icon: "square.stack.3d.up.fill"),
+        (title: "Configs", icon: "doc.text.fill"),
+        (title: "Tùy chỉnh", icon: "link")
+    ]
+
     var body: some View {
         NavigationView {
-            ZStack {
-                Color(uiColor: .systemBackground)
-                    .ignoresSafeArea()
+            ZStack(alignment: .bottom) {
+                // Background
+                LinearGradient(
+                    colors: [
+                        Color(uiColor: .systemBackground),
+                        Color(uiColor: .secondarySystemBackground).opacity(0.6)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .ignoresSafeArea()
 
                 VStack(spacing: 0) {
                     header
                         .padding(.horizontal)
                         .padding(.top, 8)
-
-                    Picker("", selection: $selectedTab) {
-                        Text("Modules").tag(0)
-                        Text("Configs").tag(1)
-                        Text("Tùy chỉnh").tag(2)
-                    }
-                    .pickerStyle(.segmented)
-                    .padding(.horizontal)
-                    .padding(.vertical, 12)
+                        .padding(.bottom, 8)
 
                     TabView(selection: $selectedTab) {
                         resourceList(ResourceStore.modules)
@@ -37,7 +43,11 @@ struct ContentView: View {
                             .tag(2)
                     }
                     .tabViewStyle(.page(indexDisplayMode: .never))
+                    .padding(.bottom, 90) // space for floating tab bar
                 }
+
+                // Liquid Glass Tab Bar
+                liquidGlassTabBar
             }
             .navigationBarHidden(true)
             .alert("Thông báo", isPresented: $showAlert) {
@@ -55,19 +65,19 @@ struct ContentView: View {
             HStack(spacing: 14) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 16)
-                        .fill(
-                            LinearGradient(
-                                colors: [Color.cyan, Color.blue],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
+                        .fill(.ultraThinMaterial)
                         .frame(width: 52, height: 52)
-                        .shadow(color: .cyan.opacity(0.4), radius: 8, x: 0, y: 4)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16)
+                                .stroke(LinearGradient(colors: [.cyan.opacity(0.6), .blue.opacity(0.4)], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1.2)
+                        )
+                        .shadow(color: .black.opacity(0.1), radius: 8, y: 4)
 
                     Image(systemName: "square.and.arrow.up.on.square.fill")
                         .font(.system(size: 22, weight: .bold))
-                        .foregroundStyle(.black)
+                        .foregroundStyle(
+                            LinearGradient(colors: [.cyan, .blue], startPoint: .topLeading, endPoint: .bottomTrailing)
+                        )
                 }
 
                 VStack(alignment: .leading, spacing: 2) {
@@ -78,7 +88,6 @@ struct ContentView: View {
 
                     Text("Modules & Configs")
                         .font(.system(size: 28, weight: .bold, design: .rounded))
-                        .foregroundStyle(.primary)
                 }
 
                 Spacer()
@@ -89,6 +98,56 @@ struct ContentView: View {
                 .foregroundStyle(.secondary)
                 .lineLimit(2)
         }
+    }
+
+    private var liquidGlassTabBar: some View {
+        HStack(spacing: 0) {
+            ForEach(0..<tabs.count, id: \.self) { index in
+                Button {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
+                        selectedTab = index
+                    }
+                } label: {
+                    VStack(spacing: 4) {
+                        Image(systemName: tabs[index].icon)
+                            .font(.system(size: 18, weight: .semibold))
+                        Text(tabs[index].title)
+                            .font(.system(size: 11, weight: .medium))
+                    }
+                    .foregroundStyle(selectedTab == index ? .cyan : .secondary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .background(
+                        Group {
+                            if selectedTab == index {
+                                Capsule()
+                                    .fill(.ultraThinMaterial)
+                                    .overlay(
+                                        Capsule()
+                                            .stroke(Color.cyan.opacity(0.5), lineWidth: 1)
+                                    )
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                            }
+                        }
+                    )
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(
+            Capsule()
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    Capsule()
+                        .stroke(Color.white.opacity(0.25), lineWidth: 0.8)
+                )
+                .shadow(color: .black.opacity(0.15), radius: 16, y: 8)
+        )
+        .padding(.horizontal, 24)
+        .padding(.bottom, 16)
     }
 
     private func resourceList(_ items: [ResourceItem]) -> some View {
@@ -102,7 +161,7 @@ struct ContentView: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
-            .padding(.bottom, 20)
+            .padding(.bottom, 30)
         }
     }
 
@@ -147,11 +206,11 @@ struct ContentView: View {
                     TextField("https://...", text: $customURL)
                         .textFieldStyle(.plain)
                         .padding(14)
-                        .background(Color(uiColor: .secondarySystemBackground))
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .background(.ultraThinMaterial)
+                        .clipShape(RoundedRectangle(cornerRadius: 14))
                         .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(Color.cyan.opacity(0.3), lineWidth: 1)
+                            RoundedRectangle(cornerRadius: 14)
+                                .stroke(Color.white.opacity(0.2), lineWidth: 1)
                         )
                         .autocapitalization(.none)
                         .disableAutocorrection(true)
@@ -168,17 +227,16 @@ struct ContentView: View {
                     .padding(.vertical, 16)
                     .background(
                         LinearGradient(
-                            colors: customURL.isEmpty ? [Color.gray.opacity(0.5)] : [Color.cyan, Color.blue],
+                            colors: customURL.isEmpty ? [Color.gray.opacity(0.4)] : [Color.cyan, Color.blue],
                             startPoint: .leading,
                             endPoint: .trailing
                         )
                     )
                     .foregroundStyle(.black)
                     .clipShape(RoundedRectangle(cornerRadius: 14))
-                    .shadow(color: customURL.isEmpty ? .clear : .cyan.opacity(0.4), radius: 8, y: 4)
+                    .shadow(color: customURL.isEmpty ? .clear : .cyan.opacity(0.35), radius: 10, y: 4)
                 }
                 .disabled(customURL.isEmpty)
-                .padding(.top, 8)
 
                 Spacer(minLength: 40)
             }
@@ -236,8 +294,12 @@ struct ResourceCard: View {
             HStack(spacing: 16) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 14)
-                        .fill(Color.cyan.opacity(0.15))
+                        .fill(.ultraThinMaterial)
                         .frame(width: 56, height: 56)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 14)
+                                .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                        )
 
                     Image(systemName: item.symbol)
                         .font(.system(size: 24, weight: .semibold))
@@ -258,9 +320,13 @@ struct ResourceCard: View {
                             .font(.caption2.weight(.semibold))
                             .padding(.horizontal, 8)
                             .padding(.vertical, 3)
-                            .background(item.type == .module ? Color.cyan.opacity(0.2) : Color.orange.opacity(0.2))
+                            .background(.ultraThinMaterial)
                             .foregroundStyle(item.type == .module ? .cyan : .orange)
                             .clipShape(Capsule())
+                            .overlay(
+                                Capsule()
+                                    .stroke(Color.white.opacity(0.15), lineWidth: 0.8)
+                            )
                     }
 
                     Text(item.description)
@@ -275,9 +341,15 @@ struct ResourceCard: View {
                     .foregroundStyle(.secondary)
             }
             .padding(16)
-            .background(Color(uiColor: .secondarySystemBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 18))
-            .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 4)
+            .background(
+                RoundedRectangle(cornerRadius: 18)
+                    .fill(.ultraThinMaterial)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 18)
+                            .stroke(Color.white.opacity(0.18), lineWidth: 1)
+                    )
+            )
+            .shadow(color: .black.opacity(0.08), radius: 10, y: 5)
         }
         .buttonStyle(.plain)
     }
