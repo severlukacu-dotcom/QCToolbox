@@ -17,11 +17,10 @@ struct ContentView: View {
     var body: some View {
         NavigationView {
             ZStack(alignment: .bottom) {
-                // Background
                 LinearGradient(
                     colors: [
                         Color(uiColor: .systemBackground),
-                        Color(uiColor: .secondarySystemBackground).opacity(0.6)
+                        Color(uiColor: .secondarySystemBackground).opacity(0.5)
                     ],
                     startPoint: .top,
                     endPoint: .bottom
@@ -30,9 +29,9 @@ struct ContentView: View {
 
                 VStack(spacing: 0) {
                     header
-                        .padding(.horizontal)
-                        .padding(.top, 8)
-                        .padding(.bottom, 8)
+                        .padding(.horizontal, 16)
+                        .padding(.top, 4)
+                        .padding(.bottom, 4)
 
                     TabView(selection: $selectedTab) {
                         resourceList(ResourceStore.modules)
@@ -43,10 +42,9 @@ struct ContentView: View {
                             .tag(2)
                     }
                     .tabViewStyle(.page(indexDisplayMode: .never))
-                    .padding(.bottom, 90) // space for floating tab bar
+                    .padding(.bottom, 72)
                 }
 
-                // Liquid Glass Tab Bar
                 liquidGlassTabBar
             }
             .navigationBarHidden(true)
@@ -61,42 +59,40 @@ struct ContentView: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 14) {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 10) {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 16)
+                    RoundedRectangle(cornerRadius: 12)
                         .fill(.ultraThinMaterial)
-                        .frame(width: 52, height: 52)
+                        .frame(width: 36, height: 36)
                         .overlay(
-                            RoundedRectangle(cornerRadius: 16)
-                                .stroke(LinearGradient(colors: [.cyan.opacity(0.6), .blue.opacity(0.4)], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1.2)
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(LinearGradient(colors: [.cyan.opacity(0.6), .blue.opacity(0.4)], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1)
                         )
-                        .shadow(color: .black.opacity(0.1), radius: 8, y: 4)
 
                     Image(systemName: "square.and.arrow.up.on.square.fill")
-                        .font(.system(size: 22, weight: .bold))
+                        .font(.system(size: 16, weight: .bold))
                         .foregroundStyle(
                             LinearGradient(colors: [.cyan, .blue], startPoint: .topLeading, endPoint: .bottomTrailing)
                         )
                 }
 
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 1) {
                     Text("QC MODULES")
-                        .font(.system(size: 13, weight: .bold, design: .rounded))
-                        .tracking(1.5)
+                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                        .tracking(1.2)
                         .foregroundStyle(.secondary)
 
                     Text("Modules & Configs")
-                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                        .font(.system(size: 20, weight: .bold, design: .rounded))
                 }
 
                 Spacer()
             }
 
-            Text("Mở trực tiếp Module và Config sang Shadowrocket bằng URL Scheme.")
-                .font(.subheadline)
+            Text("Mở trực tiếp sang Shadowrocket")
+                .font(.caption)
                 .foregroundStyle(.secondary)
-                .lineLimit(2)
         }
     }
 
@@ -104,19 +100,19 @@ struct ContentView: View {
         HStack(spacing: 0) {
             ForEach(0..<tabs.count, id: \.self) { index in
                 Button {
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
                         selectedTab = index
                     }
                 } label: {
-                    VStack(spacing: 4) {
+                    VStack(spacing: 2) {
                         Image(systemName: tabs[index].icon)
-                            .font(.system(size: 18, weight: .semibold))
+                            .font(.system(size: 15, weight: .semibold))
                         Text(tabs[index].title)
-                            .font(.system(size: 11, weight: .medium))
+                            .font(.system(size: 10, weight: .medium))
                     }
                     .foregroundStyle(selectedTab == index ? .cyan : .secondary)
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 10)
+                    .padding(.vertical, 6)
                     .background(
                         Group {
                             if selectedTab == index {
@@ -124,10 +120,10 @@ struct ContentView: View {
                                     .fill(.ultraThinMaterial)
                                     .overlay(
                                         Capsule()
-                                            .stroke(Color.cyan.opacity(0.5), lineWidth: 1)
+                                            .stroke(Color.cyan.opacity(0.5), lineWidth: 0.8)
                                     )
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 4)
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
                             }
                         }
                     )
@@ -135,60 +131,59 @@ struct ContentView: View {
                 .buttonStyle(.plain)
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 5)
         .background(
             Capsule()
                 .fill(.ultraThinMaterial)
                 .overlay(
                     Capsule()
-                        .stroke(Color.white.opacity(0.25), lineWidth: 0.8)
+                        .stroke(Color.white.opacity(0.22), lineWidth: 0.6)
                 )
-                .shadow(color: .black.opacity(0.15), radius: 16, y: 8)
+                .shadow(color: .black.opacity(0.12), radius: 10, y: 5)
         )
-        .padding(.horizontal, 24)
-        .padding(.bottom, 16)
+        .padding(.horizontal, 20)
+        .padding(.bottom, 12)
     }
 
     private func resourceList(_ items: [ResourceItem]) -> some View {
         ScrollView {
-            LazyVStack(spacing: 14) {
+            LazyVStack(spacing: 10) {
                 ForEach(items) { item in
                     ResourceCard(item: item) {
                         openResource(item)
                     }
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-            .padding(.bottom, 30)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .padding(.bottom, 20)
         }
     }
 
     private var customView: some View {
         ScrollView {
-            VStack(spacing: 24) {
-                VStack(spacing: 8) {
+            VStack(spacing: 16) {
+                VStack(spacing: 6) {
                     Image(systemName: "link.circle.fill")
-                        .font(.system(size: 48))
+                        .font(.system(size: 36))
                         .foregroundStyle(
                             LinearGradient(colors: [.cyan, .blue], startPoint: .topLeading, endPoint: .bottomTrailing)
                         )
-                        .padding(.top, 12)
+                        .padding(.top, 8)
 
                     Text("Mở tùy chỉnh")
-                        .font(.title2.bold())
+                        .font(.title3.bold())
 
-                    Text("Nhập URL Module hoặc Config để mở trực tiếp trong Shadowrocket")
-                        .font(.subheadline)
+                    Text("Nhập URL Module hoặc Config")
+                        .font(.caption)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
-                        .padding(.horizontal)
                 }
 
-                VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: 8) {
                     Text("Loại")
-                        .font(.subheadline.weight(.medium))
+                        .font(.caption.weight(.medium))
                         .foregroundStyle(.secondary)
 
                     Picker("Loại", selection: $customType) {
@@ -198,19 +193,20 @@ struct ContentView: View {
                     .pickerStyle(.segmented)
                 }
 
-                VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: 8) {
                     Text("URL")
-                        .font(.subheadline.weight(.medium))
+                        .font(.caption.weight(.medium))
                         .foregroundStyle(.secondary)
 
                     TextField("https://...", text: $customURL)
+                        .font(.subheadline)
                         .textFieldStyle(.plain)
-                        .padding(14)
+                        .padding(10)
                         .background(.ultraThinMaterial)
-                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
                         .overlay(
-                            RoundedRectangle(cornerRadius: 14)
-                                .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                            RoundedRectangle(cornerRadius: 10)
+                                .stroke(Color.white.opacity(0.2), lineWidth: 0.8)
                         )
                         .autocapitalization(.none)
                         .disableAutocorrection(true)
@@ -223,8 +219,9 @@ struct ContentView: View {
                         Text("Mở trong Shadowrocket")
                             .fontWeight(.semibold)
                     }
+                    .font(.subheadline)
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
+                    .padding(.vertical, 12)
                     .background(
                         LinearGradient(
                             colors: customURL.isEmpty ? [Color.gray.opacity(0.4)] : [Color.cyan, Color.blue],
@@ -233,15 +230,14 @@ struct ContentView: View {
                         )
                     )
                     .foregroundStyle(.black)
-                    .clipShape(RoundedRectangle(cornerRadius: 14))
-                    .shadow(color: customURL.isEmpty ? .clear : .cyan.opacity(0.35), radius: 10, y: 4)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
                 }
                 .disabled(customURL.isEmpty)
 
-                Spacer(minLength: 40)
+                Spacer(minLength: 20)
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 8)
+            .padding(.horizontal, 16)
+            .padding(.top, 4)
         }
     }
 
@@ -291,65 +287,61 @@ struct ResourceCard: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 16) {
+            HStack(spacing: 12) {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 14)
+                    RoundedRectangle(cornerRadius: 10)
                         .fill(.ultraThinMaterial)
-                        .frame(width: 56, height: 56)
+                        .frame(width: 40, height: 40)
                         .overlay(
-                            RoundedRectangle(cornerRadius: 14)
-                                .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                            RoundedRectangle(cornerRadius: 10)
+                                .stroke(Color.white.opacity(0.18), lineWidth: 0.8)
                         )
 
                     Image(systemName: item.symbol)
-                        .font(.system(size: 24, weight: .semibold))
+                        .font(.system(size: 18, weight: .semibold))
                         .foregroundStyle(
                             LinearGradient(colors: [.cyan, .blue], startPoint: .topLeading, endPoint: .bottomTrailing)
                         )
                 }
 
-                VStack(alignment: .leading, spacing: 6) {
+                VStack(alignment: .leading, spacing: 3) {
                     HStack {
                         Text(item.name)
-                            .font(.headline)
+                            .font(.subheadline.weight(.semibold))
                             .foregroundStyle(.primary)
+                            .lineLimit(1)
 
                         Spacer()
 
                         Text(item.type.rawValue)
-                            .font(.caption2.weight(.semibold))
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 3)
+                            .font(.system(size: 9, weight: .semibold))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
                             .background(.ultraThinMaterial)
                             .foregroundStyle(item.type == .module ? .cyan : .orange)
                             .clipShape(Capsule())
-                            .overlay(
-                                Capsule()
-                                    .stroke(Color.white.opacity(0.15), lineWidth: 0.8)
-                            )
                     }
 
                     Text(item.description)
-                        .font(.caption)
+                        .font(.caption2)
                         .foregroundStyle(.secondary)
-                        .lineLimit(2)
-                        .multilineTextAlignment(.leading)
+                        .lineLimit(1)
                 }
 
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(.secondary)
             }
-            .padding(16)
+            .padding(10)
             .background(
-                RoundedRectangle(cornerRadius: 18)
+                RoundedRectangle(cornerRadius: 14)
                     .fill(.ultraThinMaterial)
                     .overlay(
-                        RoundedRectangle(cornerRadius: 18)
-                            .stroke(Color.white.opacity(0.18), lineWidth: 1)
+                        RoundedRectangle(cornerRadius: 14)
+                            .stroke(Color.white.opacity(0.15), lineWidth: 0.8)
                     )
             )
-            .shadow(color: .black.opacity(0.08), radius: 10, y: 5)
+            .shadow(color: .black.opacity(0.06), radius: 6, y: 3)
         }
         .buttonStyle(.plain)
     }
