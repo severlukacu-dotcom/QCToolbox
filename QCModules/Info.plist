@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
     <key>CFBundleDisplayName</key>
-    <string>QC Modules</string>
+    <string>QC Files</string>
 
     <key>CFBundleIdentifier</key>
     <string>com.quocchien.qcmodules</string>
@@ -30,10 +30,5 @@
 
     <key>UIViewControllerBasedStatusBarAppearance</key>
     <true/>
-
-    <key>LSApplicationQueriesSchemes</key>
-    <array>
-        <string>shadowrocket</string>
-    </array>
 </dict>
 </plist>
