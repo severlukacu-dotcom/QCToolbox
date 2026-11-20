@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
     <key>CFBundleDisplayName</key>
-    <string>QC Files</string>
+    <string>Device Info</string>
 
     <key>CFBundleIdentifier</key>
     <string>com.quocchien.qcmodules</string>
