@@ -228,7 +228,7 @@ struct UploadView: View {
                         Label("Chọn từ Files", systemImage: "folder")
                     }
                     if isProcessing {
-                        ProgressView("Đang tải lên...")
+                        ProgressView("Đang xử lý...")
                     }
                     if let url = selectedURL {
                         Text(url.lastPathComponent)
@@ -280,7 +280,7 @@ struct UploadView: View {
                 }
             }
             .photosPicker(isPresented: $showPhotoPicker, selection: $photoItem, matching: .videos)
-            .onChange(of: photoItem) { newItem in
+            .onChange(of: photoItem) { _, newItem in
                 guard let newItem = newItem else { return }
                 isProcessing = true
                 message = ""
