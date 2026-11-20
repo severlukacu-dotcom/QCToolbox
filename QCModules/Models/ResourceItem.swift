@@ -19,8 +19,7 @@ struct ResourceStore {
         ResourceItem(
             name: "YouTube No Ads",
             description: "Loại bỏ quảng cáo YouTube, hỗ trợ PiP và phát nền",
-            url: "https://raw.githubusercontent.com/RuCu6/Loon/main/Module/YouTube.sgmodule",
-            type: .module,
+            url: "https://gitlab.com/chienq895/module-ad-config/-/raw/main/youtubepro.module,
             symbol: "play.rectangle.fill"
         ),
         ResourceItem(
@@ -31,30 +30,29 @@ struct ResourceStore {
             symbol: "music.note"
         ),
         ResourceItem(
-            name: "Adblock Chung",
-            description: "Chặn quảng cáo và tracker tổng quát",
-            url: "https://raw.githubusercontent.com/akiralereal/shadowrocket-toolkit/main/dist/adblock.module",
+            name: "PicsArt Premium",
+            description: "Kích hoạt Premium cho PicsArt",
+            url: "https://github.com/QuocChienn2709/quocchiennshadowrocket/raw/refs/heads/main/picsart.module,
             type: .module,
             symbol: "shield.fill"
         ),
         ResourceItem(
             name: "Spotify",
             description: "Hỗ trợ Spotify (một số tính năng)",
-            url: "https://raw.githubusercontent.com/akiralereal/shadowrocket-toolkit/main/dist/spotify.module",
-            type: .module,
+            url: "https://gitlab.com/chienq895/module-ad-config/-/raw/main/spotifyVIP.module,
             symbol: "music.note.list"
         ),
         ResourceItem(
-            name: "Reject Rules",
-            description: "Module quy tắc REJECT lớn",
-            url: "https://raw.githubusercontent.com/GMOogway/shadowrocket-rules/master/sr_reject_list.module",
+            name: "Alight Motion Pro",
+            description: "Unlock Pro  Alight Motion",
+            url: "https://raw.githubusercontent.com/QuocChienn2709/quocchiennshadowrocket/refs/heads/main/alightmotion.module",
             type: .module,
             symbol: "xmark.shield.fill"
         ),
         ResourceItem(
-            name: "JD Price History",
-            description: "Hiển thị lịch sử giá JD/Taobao",
-            url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/script/jd_price/jd_price.sgmodule",
+            name: "Lightroom Creative Cloud Standard",
+            description: "Được kích hoạt gói Creative Cloud Standard",
+            url: "https://raw.githubusercontent.com/QuocChienn2709/quocchiennshadowrocket/refs/heads/main/lightroom.module",
             type: .module,
             symbol: "cart.fill"
         ),
