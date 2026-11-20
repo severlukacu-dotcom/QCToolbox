@@ -1,16 +1,15 @@
-# QC Files
+# Device Info
 
-File manager mới, giao diện tối (lấy cảm hứng từ 3106).
+Ứng dụng xem thông tin thiết bị iOS.
 
-Chỉ truy cập thư mục Documents của app.
+## Hiển thị
+- Model, tên máy, phiên bản iOS
+- Kích thước màn hình, scale
+- Dung lượng tổng / còn trống / đã dùng
+- Mức pin và trạng thái
+- Ngôn ngữ, múi giờ, phiên bản app
 
-## Tính năng
-- Duyệt thư mục
-- Path chips
-- Tạo thư mục / file
-- Import
-- Đổi tên / Xóa
-- Sửa file text
+Kéo xuống để làm mới.
 
 ## Build IPA
-Actions → Build QC Modules IPA → Run workflow
+Vào **Actions** → **Build QC Modules IPA** → **Run workflow**
