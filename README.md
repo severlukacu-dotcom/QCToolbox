@@ -1,25 +1,21 @@
 # Domain Blocker
 
-Ứng dụng quản lý danh sách domain chặn.
-
-## Mặc định
-- fmipmobile.icloud.com
-- fmip.icloud.com
-- gs.apple.com
-- identity.apple.com
-- setup.icloud.com
-- appleid.apple.com
-- ax.init.itunes.apple.com
-- icloud.com
+Quản lý và tạo rule chặn domain.
 
 ## Tính năng
-- Bật / tắt từng domain
-- Thêm domain tùy chọn
-- Xóa domain tùy chọn
-- Lưu trên máy
+- Công tắc **Bật/Tắt** tổng
+- Bật/tắt từng domain
+- Thêm / xóa domain
+- Xuất rule **Shadowrocket** (`DOMAIN-SUFFIX,domain,REJECT`)
+
+## Cách chặn thật
+1. Mở app → bật công tắc
+2. Nhấn **Xem rule chặn** → Copy
+3. Mở **Shadowrocket** → Config → Rules → dán vào
+4. Bật proxy
 
 ## Lưu ý
-App chỉ quản lý danh sách. Để chặn thật sự cần dùng cùng Content Blocker Extension, Shadowrocket, hoặc proxy.
+App iOS thông thường không thể chặn domain toàn hệ thống. Dùng rule với Shadowrocket để chặn thật.
 
 ## Build IPA
-Vào **Actions** → **Build QC Modules IPA** → **Run workflow**
+Actions → Build QC Modules IPA → Run workflow
