@@ -1,9 +1,11 @@
 import SwiftUI
+import NetworkExtension
 
 struct ContentView: View {
     @StateObject private var store = BlockStore()
     @State private var newDomain = ""
     @State private var showAdd = false
+    @State private var statusText = ""
 
     var body: some View {
         NavigationView {
@@ -34,6 +36,9 @@ struct ContentView: View {
         }
         .navigationViewStyle(.stack)
         .preferredColorScheme(.dark)
+        .onAppear {
+            store.checkStatus()
+        }
     }
 
     private var statusHeader: some View {
@@ -68,6 +73,14 @@ struct ContentView: View {
             }
             .padding(.horizontal, 20)
 
+            if !store.statusMessage.isEmpty {
+                Text(store.statusMessage)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 20)
+            }
+
             Text(store.isBlocking
                  ? "\(store.enabledCount) domain đang bị chặn"
                  : "Chặn đang tắt")
@@ -100,7 +113,7 @@ struct ContentView: View {
             }
 
             Section {
-                Text("Bật chặn để kích hoạt. App lưu danh sách và trạng thái. Chặn toàn hệ thống cần Network Extension (yêu cầu Apple Developer).")
+                Text("Bật chặn sẽ yêu cầu cài VPN. Cần ký app bằng chứng chỉ có Network Extension.")
                     .font(.caption2)
                     .foregroundColor(.secondary)
             }
@@ -160,9 +173,11 @@ struct BlockItem: Identifiable, Codable, Equatable {
 class BlockStore: ObservableObject {
     @Published var items: [BlockItem] = []
     @Published var isBlocking = false
+    @Published var statusMessage = ""
 
     private let itemsKey = "blocked_domains"
     private let blockingKey = "is_blocking"
+    private let appGroup = "group.com.quocchien.qcmodules"
 
     init() {
         load()
@@ -172,15 +187,96 @@ class BlockStore: ObservableObject {
     var customs: [BlockItem] { items.filter { !$0.isDefault } }
     var enabledCount: Int { items.filter { $0.enabled }.count }
 
+    var activeDomains: [String] {
+        items.filter { $0.enabled }.map { $0.domain }
+    }
+
+    func checkStatus() {
+        NEVPNManager.shared().loadFromPreferences { [weak self] error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    self?.statusMessage = "Lỗi: \(error.localizedDescription)"
+                    return
+                }
+                let status = NEVPNManager.shared().connection.status
+                self?.isBlocking = (status == .connected || status == .connecting)
+            }
+        }
+    }
+
     func toggleBlocking() {
-        isBlocking.toggle()
-        UserDefaults.standard.set(isBlocking, forKey: blockingKey)
+        if isBlocking {
+            stopTunnel()
+        } else {
+            startTunnel()
+        }
+    }
+
+    private func startTunnel() {
+        statusMessage = "Đang kết nối..."
+        let manager = NEVPNManager.shared()
+        manager.loadFromPreferences { [weak self] error in
+            guard let self = self else { return }
+            if let error = error {
+                DispatchQueue.main.async {
+                    self.statusMessage = "Lỗi: \(error.localizedDescription)"
+                }
+                return
+            }
+
+            let proto = NETunnelProviderProtocol()
+            proto.providerBundleIdentifier = "com.quocchien.qcmodules.tunnel"
+            proto.serverAddress = "Domain Blocker"
+            proto.providerConfiguration = ["blockedDomains": self.activeDomains as NSArray]
+
+            manager.protocolConfiguration = proto
+            manager.localizedDescription = "Domain Blocker"
+            manager.isEnabled = true
+
+            manager.saveToPreferences { error in
+                if let error = error {
+                    DispatchQueue.main.async {
+                        self.statusMessage = "Lỗi lưu: \(error.localizedDescription)"
+                    }
+                    return
+                }
+                do {
+                    try manager.connection.startVPNTunnel()
+                    DispatchQueue.main.async {
+                        self.isBlocking = true
+                        self.statusMessage = "Đã bật chặn"
+                        UserDefaults.standard.set(true, forKey: self.blockingKey)
+                    }
+                } catch {
+                    DispatchQueue.main.async {
+                        self.statusMessage = "Lỗi khởi động: \(error.localizedDescription)"
+                    }
+                }
+            }
+        }
+    }
+
+    private func stopTunnel() {
+        NEVPNManager.shared().connection.stopVPNTunnel()
+        isBlocking = false
+        statusMessage = "Đã tắt"
+        UserDefaults.standard.set(false, forKey: blockingKey)
     }
 
     func toggle(_ item: BlockItem) {
         if let i = items.firstIndex(where: { $0.id == item.id }) {
             items[i].enabled.toggle()
             save()
+            if isBlocking {
+                restartTunnel()
+            }
+        }
+    }
+
+    private func restartTunnel() {
+        stopTunnel()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            self.startTunnel()
         }
     }
 
@@ -214,6 +310,8 @@ class BlockStore: ObservableObject {
         if let data = try? JSONEncoder().encode(items) {
             UserDefaults.standard.set(data, forKey: itemsKey)
         }
+        let domains = activeDomains
+        UserDefaults(suiteName: appGroup)?.set(domains, forKey: "blocked_domains")
     }
 
     private static let defaultList: [BlockItem] = [
