@@ -111,19 +111,8 @@ struct ContentView: View {
                 }
             }
 
-            Section("Hướng dẫn ký") {
-                Text("""
-                Lỗi "Missing protocol" xảy ra vì Network Extension chưa được nhúng vào app.
-
-                Cách sửa:
-                1. Mở project bằng Xcode
-                2. Thêm target Network Extension (Packet Tunnel)
-                3. Bật capability Network Extension + App Groups
-                4. Ký bằng chứng chỉ trả phí
-                5. Build & cài từ Xcode
-
-                GitHub Actions build unsigned nên extension không chạy được.
-                """)
+            Section("Lưu ý") {
+                Text("Ký IPA bằng Esign với profile Azor5212. Extension cần được nhúng đúng.")
                     .font(.caption2)
                     .foregroundColor(.secondary)
             }
@@ -187,7 +176,7 @@ class BlockStore: ObservableObject {
 
     private let itemsKey = "blocked_domains"
     private let blockingKey = "is_blocking"
-    private let appGroup = "group.com.quocchien.qcmodules"
+    private let appGroup = "group.azor5174"
 
     init() {
         load()
@@ -235,7 +224,7 @@ class BlockStore: ObservableObject {
             }
 
             let proto = NETunnelProviderProtocol()
-            proto.providerBundleIdentifier = "com.quocchien.qcmodules.tunnel"
+            proto.providerBundleIdentifier = "Azor5212.tunnel"
             proto.serverAddress = "Domain Blocker"
             proto.providerConfiguration = ["blockedDomains": self.activeDomains as NSArray]
 
@@ -248,7 +237,7 @@ class BlockStore: ObservableObject {
                     if let error = error {
                         let msg = error.localizedDescription
                         if msg.contains("Missing protocol") || msg.contains("invalid type") {
-                            self.statusMessage = "Extension chưa được nhúng. Cần ký bằng Xcode + thêm target Network Extension."
+                            self.statusMessage = "Extension chưa nhúng. Cần ký đúng bằng Esign + profile có Network Extension."
                         } else {
                             self.statusMessage = "Lỗi: \(msg)"
                         }
