@@ -1,16 +1,24 @@
 # Domain Blocker
 
-Ứng dụng chặn domain kiểu VPN.
+Ứng dụng chặn domain thật bằng Network Extension (Packet Tunnel).
 
 ## Tính năng
-- Nút bật / tắt chặn (kiểu VPN)
-- Danh sách domain mặc định (Find My / iCloud)
+- Bật / tắt chặn kiểu VPN
+- Chặn domain mặc định (Find My / iCloud)
 - Thêm / xóa domain tùy chọn
-- Bật / tắt từng domain
-- Hiển thị trạng thái đang chặn
+- Network Extension Packet Tunnel
 
-## Lưu ý
-App quản lý danh sách và trạng thái. Chặn toàn hệ thống thật sự cần **Network Extension**, yêu cầu Apple Developer Account và entitlement đặc biệt (không hoạt động đầy đủ với IPA sideload thông thường).
+## Yêu cầu
+- Apple Developer Program (trả phí)
+- Entitlement **Network Extension** + **App Groups**
+- Ký app bằng chứng chỉ cá nhân (GitHub Actions hiện build unsigned)
+
+## Cách dùng
+1. Ký app và extension bằng Xcode + chứng chỉ của bạn
+2. Cài lên máy
+3. Mở app → **Bật chặn** → cho phép cài VPN
+4. Domain trong danh sách sẽ bị chặn
 
 ## Build IPA
-Vào **Actions** → **Build QC Modules IPA** → **Run workflow**
+Vào **Actions** → **Build QC Modules IPA** → **Run workflow**  
+(Bản unsigned có thể không kích hoạt được extension. Nên ký local.)
