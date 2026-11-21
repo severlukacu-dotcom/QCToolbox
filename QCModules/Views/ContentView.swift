@@ -5,7 +5,6 @@ struct ContentView: View {
     @StateObject private var store = BlockStore()
     @State private var newDomain = ""
     @State private var showAdd = false
-    @State private var statusText = ""
 
     var body: some View {
         NavigationView {
@@ -76,7 +75,7 @@ struct ContentView: View {
             if !store.statusMessage.isEmpty {
                 Text(store.statusMessage)
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(.orange)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 20)
             }
@@ -112,8 +111,19 @@ struct ContentView: View {
                 }
             }
 
-            Section {
-                Text("Bật chặn sẽ yêu cầu cài VPN. Cần ký app bằng chứng chỉ có Network Extension.")
+            Section("Hướng dẫn ký") {
+                Text("""
+                Lỗi "Missing protocol" xảy ra vì Network Extension chưa được nhúng vào app.
+
+                Cách sửa:
+                1. Mở project bằng Xcode
+                2. Thêm target Network Extension (Packet Tunnel)
+                3. Bật capability Network Extension + App Groups
+                4. Ký bằng chứng chỉ trả phí
+                5. Build & cài từ Xcode
+
+                GitHub Actions build unsigned nên extension không chạy được.
+                """)
                     .font(.caption2)
                     .foregroundColor(.secondary)
             }
@@ -234,21 +244,22 @@ class BlockStore: ObservableObject {
             manager.isEnabled = true
 
             manager.saveToPreferences { error in
-                if let error = error {
-                    DispatchQueue.main.async {
-                        self.statusMessage = "Lỗi lưu: \(error.localizedDescription)"
+                DispatchQueue.main.async {
+                    if let error = error {
+                        let msg = error.localizedDescription
+                        if msg.contains("Missing protocol") || msg.contains("invalid type") {
+                            self.statusMessage = "Extension chưa được nhúng. Cần ký bằng Xcode + thêm target Network Extension."
+                        } else {
+                            self.statusMessage = "Lỗi: \(msg)"
+                        }
+                        return
                     }
-                    return
-                }
-                do {
-                    try manager.connection.startVPNTunnel()
-                    DispatchQueue.main.async {
+                    do {
+                        try manager.connection.startVPNTunnel()
                         self.isBlocking = true
                         self.statusMessage = "Đã bật chặn"
                         UserDefaults.standard.set(true, forKey: self.blockingKey)
-                    }
-                } catch {
-                    DispatchQueue.main.async {
+                    } catch {
                         self.statusMessage = "Lỗi khởi động: \(error.localizedDescription)"
                     }
                 }
