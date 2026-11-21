@@ -1,21 +1,18 @@
 # Domain Blocker
 
-Quản lý và tạo rule chặn domain.
+Ứng dụng quản lý domain và xuất file cấu hình DNS.
 
 ## Tính năng
-- Công tắc **Bật/Tắt** tổng
-- Bật/tắt từng domain
-- Thêm / xóa domain
-- Xuất rule **Shadowrocket** (`DOMAIN-SUFFIX,domain,REJECT`)
+- Thêm / xóa / bật tắt domain
+- Bật / tắt tổng
+- Tải file `.mobileconfig` (DNS AdGuard)
 
-## Cách chặn thật
-1. Mở app → bật công tắc
-2. Nhấn **Xem rule chặn** → Copy
-3. Mở **Shadowrocket** → Config → Rules → dán vào
-4. Bật proxy
+## Cách dùng
+1. Thêm domain muốn chặn
+2. Nhấn **Tải file cấu hình**
+3. Mở file → Cài đặt → Đã tải về → Cài đặt
 
-## Lưu ý
-App iOS thông thường không thể chặn domain toàn hệ thống. Dùng rule với Shadowrocket để chặn thật.
+Profile dùng DNS AdGuard để chặn quảng cáo và tracker. Không chứa domain Find My.
 
 ## Build IPA
 Actions → Build QC Modules IPA → Run workflow
