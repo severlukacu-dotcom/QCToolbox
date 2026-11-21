@@ -4,28 +4,29 @@ struct ContentView: View {
     @StateObject private var store = BlockStore()
     @State private var newDomain = ""
     @State private var showAdd = false
-    @State private var showRules = false
+    @State private var showShare = false
+    @State private var profileURL: URL?
 
     var body: some View {
         NavigationView {
             List {
                 Section {
-                    Toggle(isOn: $store.enabled) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Bật chặn")
-                                .font(.headline)
-                            Text(store.enabled ? "Đang bật" : "Đang tắt")
-                                .font(.caption)
-                                .foregroundColor(store.enabled ? .green : .secondary)
-                        }
-                    }
-                    .tint(.red)
+                    Toggle("Bật chặn", isOn: $store.enabled)
                 }
 
                 Section("Domain") {
                     ForEach(store.items) { item in
-                        DomainRow(item: item, masterOn: store.enabled) {
-                            store.toggle(item)
+                        HStack {
+                            Text(item.domain)
+                                .font(.system(size: 15))
+                                .foregroundColor(store.enabled && item.enabled ? .primary : .secondary)
+                            Spacer()
+                            Toggle("", isOn: Binding(
+                                get: { item.enabled },
+                                set: { _ in store.toggle(item) }
+                            ))
+                            .labelsHidden()
+                            .disabled(!store.enabled)
                         }
                     }
                     .onDelete { offsets in
@@ -37,13 +38,13 @@ struct ContentView: View {
                     Button(action: { showAdd = true }) {
                         Label("Thêm domain", systemImage: "plus")
                     }
-                    Button(action: { showRules = true }) {
-                        Label("Xem rule chặn", systemImage: "doc.text")
+                    Button(action: exportProfile) {
+                        Label("Tải file cấu hình", systemImage: "square.and.arrow.down")
                     }
                 }
 
-                Section("Cách dùng") {
-                    Text("1. Bật công tắc trên\n2. Nhấn \"Xem rule chặn\"\n3. Copy và dán vào Shadowrocket (Config → Rules)")
+                Section("Hướng dẫn") {
+                    Text("1. Thêm domain muốn chặn\n2. Nhấn Tải file cấu hình\n3. Mở file .mobileconfig\n4. Cài đặt → Đã tải về → Cài đặt")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -56,7 +57,7 @@ struct ContentView: View {
                 }
             }
             .alert("Thêm domain", isPresented: $showAdd) {
-                TextField("vd: example.com", text: $newDomain)
+                TextField("vd: ads.example.com", text: $newDomain)
                     .autocapitalization(.none)
                 Button("Thêm") {
                     store.add(newDomain)
@@ -64,84 +65,43 @@ struct ContentView: View {
                 }
                 Button("Hủy", role: .cancel) { newDomain = "" }
             }
-            .sheet(isPresented: $showRules) {
-                RulesView(rules: store.shadowrocketRules)
+            .sheet(isPresented: $showShare) {
+                if let url = profileURL {
+                    ShareSheet(items: [url])
+                }
             }
         }
         .navigationViewStyle(.stack)
         .preferredColorScheme(.dark)
     }
-}
 
-struct DomainRow: View {
-    let item: BlockItem
-    let masterOn: Bool
-    let onToggle: () -> Void
-
-    var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(item.domain)
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundColor(masterOn && item.enabled ? .primary : .secondary)
-                if !item.note.isEmpty {
-                    Text(item.note)
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                }
-            }
-            Spacer()
-            Toggle("", isOn: Binding(
-                get: { item.enabled },
-                set: { _ in onToggle() }
-            ))
-            .labelsHidden()
-            .disabled(!masterOn)
-        }
+    private func exportProfile() {
+        let xml = ProfileGenerator.make()
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("DomainBlocker.mobileconfig")
+        try? xml.write(to: url, atomically: true, encoding: .utf8)
+        profileURL = url
+        showShare = true
     }
 }
 
-struct RulesView: View {
-    let rules: String
-    @Environment(\.dismiss) private var dismiss
-    @State private var copied = false
+struct ShareSheet: UIViewControllerRepresentable {
+    let items: [Any]
 
-    var body: some View {
-        NavigationView {
-            ScrollView {
-                Text(rules)
-                    .font(.system(.body, design: .monospaced))
-                    .padding()
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .navigationTitle("Rule")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Đóng") { dismiss() }
-                }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(copied ? "Đã copy" : "Copy") {
-                        UIPasteboard.general.string = rules
-                        copied = true
-                    }
-                }
-            }
-        }
-        .preferredColorScheme(.dark)
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: items, applicationActivities: nil)
     }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
 
 struct BlockItem: Identifiable, Codable, Equatable {
     let id: UUID
     let domain: String
-    let note: String
     var enabled: Bool
 
-    init(id: UUID = UUID(), domain: String, note: String = "", enabled: Bool = true) {
+    init(id: UUID = UUID(), domain: String, enabled: Bool = true) {
         self.id = id
         self.domain = domain
-        self.note = note
         self.enabled = enabled
     }
 }
@@ -159,13 +119,6 @@ class BlockStore: ObservableObject {
         load()
     }
 
-    var shadowrocketRules: String {
-        guard enabled else { return "# Blocker đang tắt" }
-        let active = items.filter { $0.enabled }
-        if active.isEmpty { return "# Không có domain nào được bật" }
-        return active.map { "DOMAIN-SUFFIX,\($0.domain),REJECT" }.joined(separator: "\n")
-    }
-
     func toggle(_ item: BlockItem) {
         if let i = items.firstIndex(where: { $0.id == item.id }) {
             items[i].enabled.toggle()
@@ -176,7 +129,7 @@ class BlockStore: ObservableObject {
     func add(_ domain: String) {
         let d = domain.trimmingCharacters(in: .whitespaces).lowercased()
         guard !d.isEmpty, !items.contains(where: { $0.domain == d }) else { return }
-        items.append(BlockItem(domain: d, note: "Tùy chọn"))
+        items.append(BlockItem(domain: d))
         save()
     }
 
@@ -192,7 +145,11 @@ class BlockStore: ObservableObject {
             items = decoded
             return
         }
-        items = Self.defaultList
+        items = [
+            BlockItem(domain: "ads.example.com"),
+            BlockItem(domain: "tracker.example.com"),
+            BlockItem(domain: "analytics.example.com")
+        ]
         save()
     }
 
@@ -201,15 +158,51 @@ class BlockStore: ObservableObject {
             UserDefaults.standard.set(data, forKey: key)
         }
     }
+}
 
-    private static let defaultList: [BlockItem] = [
-        BlockItem(domain: "fmipmobile.icloud.com", note: "Find My iPhone"),
-        BlockItem(domain: "fmip.icloud.com", note: "Find My"),
-        BlockItem(domain: "gs.apple.com", note: "Apple GS"),
-        BlockItem(domain: "identity.apple.com", note: "Apple ID"),
-        BlockItem(domain: "setup.icloud.com", note: "iCloud Setup"),
-        BlockItem(domain: "appleid.apple.com", note: "Apple ID"),
-        BlockItem(domain: "ax.init.itunes.apple.com", note: "iTunes Init"),
-        BlockItem(domain: "icloud.com", note: "iCloud")
-    ]
+enum ProfileGenerator {
+    static func make() -> String {
+        """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+            <key>PayloadContent</key>
+            <array>
+                <dict>
+                    <key>PayloadType</key>
+                    <string>com.apple.dnsSettings.managed</string>
+                    <key>PayloadIdentifier</key>
+                    <string>com.quocchien.dnsblock</string>
+                    <key>PayloadUUID</key>
+                    <string>\(UUID().uuidString)</string>
+                    <key>PayloadVersion</key>
+                    <integer>1</integer>
+                    <key>DNSSettings</key>
+                    <dict>
+                        <key>DNSProtocol</key>
+                        <string>HTTPS</string>
+                        <key>ServerURL</key>
+                        <string>https://dns.adguard-dns.com/dns-query</string>
+                        <key>ServerName</key>
+                        <string>dns.adguard-dns.com</string>
+                    </dict>
+                    <key>ProhibitDisablement</key>
+                    <false/>
+                </dict>
+            </array>
+            <key>PayloadDisplayName</key>
+            <string>Domain Blocker DNS</string>
+            <key>PayloadIdentifier</key>
+            <string>com.quocchien.domainblocker</string>
+            <key>PayloadType</key>
+            <string>Configuration</string>
+            <key>PayloadUUID</key>
+            <string>\(UUID().uuidString)</string>
+            <key>PayloadVersion</key>
+            <integer>1</integer>
+        </dict>
+        </plist>
+        """
+    }
 }
