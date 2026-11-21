@@ -4,14 +4,22 @@ struct ContentView: View {
     @StateObject private var store = BlockStore()
     @State private var newDomain = ""
     @State private var showAdd = false
-    @State private var showShare = false
-    @State private var profileURL: URL?
+    @State private var showRules = false
 
     var body: some View {
         NavigationView {
             List {
                 Section {
-                    Toggle("Bật chặn", isOn: $store.enabled)
+                    Toggle(isOn: $store.enabled) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Bật chặn")
+                                .font(.headline)
+                            Text(store.enabled ? "Đang bật" : "Đang tắt")
+                                .font(.caption)
+                                .foregroundColor(store.enabled ? .green : .secondary)
+                        }
+                    }
+                    .tint(.red)
                 }
 
                 Section("Domain") {
@@ -38,13 +46,13 @@ struct ContentView: View {
                     Button(action: { showAdd = true }) {
                         Label("Thêm domain", systemImage: "plus")
                     }
-                    Button(action: exportProfile) {
-                        Label("Tải file cấu hình", systemImage: "square.and.arrow.down")
+                    Button(action: { showRules = true }) {
+                        Label("Xem rule chặn", systemImage: "doc.text")
                     }
                 }
 
-                Section("Hướng dẫn") {
-                    Text("1. Thêm domain muốn chặn\n2. Nhấn Tải file cấu hình\n3. Mở file .mobileconfig\n4. Cài đặt → Đã tải về → Cài đặt")
+                Section("Cách dùng") {
+                    Text("1. Thêm domain\n2. Nhấn Xem rule chặn\n3. Copy và dán vào Shadowrocket (Config → Rules)")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -65,33 +73,44 @@ struct ContentView: View {
                 }
                 Button("Hủy", role: .cancel) { newDomain = "" }
             }
-            .sheet(isPresented: $showShare) {
-                if let url = profileURL {
-                    ShareSheet(items: [url])
-                }
+            .sheet(isPresented: $showRules) {
+                RulesView(rules: store.rules)
             }
         }
         .navigationViewStyle(.stack)
         .preferredColorScheme(.dark)
     }
-
-    private func exportProfile() {
-        let xml = ProfileGenerator.make()
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent("DomainBlocker.mobileconfig")
-        try? xml.write(to: url, atomically: true, encoding: .utf8)
-        profileURL = url
-        showShare = true
-    }
 }
 
-struct ShareSheet: UIViewControllerRepresentable {
-    let items: [Any]
+struct RulesView: View {
+    let rules: String
+    @Environment(\.dismiss) private var dismiss
+    @State private var copied = false
 
-    func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: items, applicationActivities: nil)
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                Text(rules)
+                    .font(.system(.body, design: .monospaced))
+                    .padding()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .navigationTitle("Rule")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Đóng") { dismiss() }
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(copied ? "Đã copy" : "Copy") {
+                        UIPasteboard.general.string = rules
+                        copied = true
+                    }
+                }
+            }
+        }
+        .preferredColorScheme(.dark)
     }
-
-    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
 
 struct BlockItem: Identifiable, Codable, Equatable {
@@ -117,6 +136,13 @@ class BlockStore: ObservableObject {
     init() {
         enabled = UserDefaults.standard.object(forKey: "blocker_enabled") as? Bool ?? true
         load()
+    }
+
+    var rules: String {
+        guard enabled else { return "# Đang tắt" }
+        let active = items.filter { $0.enabled }
+        if active.isEmpty { return "# Không có domain" }
+        return active.map { "DOMAIN-SUFFIX,\($0.domain),REJECT" }.joined(separator: "\n")
     }
 
     func toggle(_ item: BlockItem) {
@@ -147,8 +173,7 @@ class BlockStore: ObservableObject {
         }
         items = [
             BlockItem(domain: "ads.example.com"),
-            BlockItem(domain: "tracker.example.com"),
-            BlockItem(domain: "analytics.example.com")
+            BlockItem(domain: "tracker.example.com")
         ]
         save()
     }
@@ -157,52 +182,5 @@ class BlockStore: ObservableObject {
         if let data = try? JSONEncoder().encode(items) {
             UserDefaults.standard.set(data, forKey: key)
         }
-    }
-}
-
-enum ProfileGenerator {
-    static func make() -> String {
-        """
-        <?xml version="1.0" encoding="UTF-8"?>
-        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-        <plist version="1.0">
-        <dict>
-            <key>PayloadContent</key>
-            <array>
-                <dict>
-                    <key>PayloadType</key>
-                    <string>com.apple.dnsSettings.managed</string>
-                    <key>PayloadIdentifier</key>
-                    <string>com.quocchien.dnsblock</string>
-                    <key>PayloadUUID</key>
-                    <string>\(UUID().uuidString)</string>
-                    <key>PayloadVersion</key>
-                    <integer>1</integer>
-                    <key>DNSSettings</key>
-                    <dict>
-                        <key>DNSProtocol</key>
-                        <string>HTTPS</string>
-                        <key>ServerURL</key>
-                        <string>https://dns.adguard-dns.com/dns-query</string>
-                        <key>ServerName</key>
-                        <string>dns.adguard-dns.com</string>
-                    </dict>
-                    <key>ProhibitDisablement</key>
-                    <false/>
-                </dict>
-            </array>
-            <key>PayloadDisplayName</key>
-            <string>Domain Blocker DNS</string>
-            <key>PayloadIdentifier</key>
-            <string>com.quocchien.domainblocker</string>
-            <key>PayloadType</key>
-            <string>Configuration</string>
-            <key>PayloadUUID</key>
-            <string>\(UUID().uuidString)</string>
-            <key>PayloadVersion</key>
-            <integer>1</integer>
-        </dict>
-        </plist>
-        """
     }
 }
