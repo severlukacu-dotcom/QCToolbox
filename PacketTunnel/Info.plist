@@ -5,7 +5,7 @@
     <key>CFBundleDisplayName</key>
     <string>Domain Blocker Tunnel</string>
     <key>CFBundleIdentifier</key>
-    <string>com.quocchien.qcmodules.tunnel</string>
+    <string>Azor5212.tunnel</string>
     <key>CFBundleExecutable</key>
     <string>PacketTunnel</string>
     <key>CFBundlePackageType</key>
