@@ -1,18 +1,18 @@
 # Domain Blocker
 
-Ứng dụng quản lý domain và xuất file cấu hình DNS.
+Quản lý domain và xuất rule cho Shadowrocket.
 
 ## Tính năng
 - Thêm / xóa / bật tắt domain
 - Bật / tắt tổng
-- Tải file `.mobileconfig` (DNS AdGuard)
+- Xuất rule `DOMAIN-SUFFIX,...,REJECT`
 
 ## Cách dùng
-1. Thêm domain muốn chặn
-2. Nhấn **Tải file cấu hình**
-3. Mở file → Cài đặt → Đã tải về → Cài đặt
+1. Thêm domain
+2. Nhấn **Xem rule chặn** → Copy
+3. Dán vào Shadowrocket (Config → Rules)
 
-Profile dùng DNS AdGuard để chặn quảng cáo và tracker. Không chứa domain Find My.
+Shadowrocket sẽ chặn các domain đó.
 
 ## Build IPA
 Actions → Build QC Modules IPA → Run workflow
