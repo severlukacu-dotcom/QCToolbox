@@ -1,18 +1,16 @@
 # Domain Blocker
 
-Quản lý domain và xuất rule cho Shadowrocket.
+Ứng dụng chặn domain kiểu VPN.
 
 ## Tính năng
-- Thêm / xóa / bật tắt domain
-- Bật / tắt tổng
-- Xuất rule `DOMAIN-SUFFIX,...,REJECT`
+- Nút bật / tắt chặn (kiểu VPN)
+- Danh sách domain mặc định (Find My / iCloud)
+- Thêm / xóa domain tùy chọn
+- Bật / tắt từng domain
+- Hiển thị trạng thái đang chặn
 
-## Cách dùng
-1. Thêm domain
-2. Nhấn **Xem rule chặn** → Copy
-3. Dán vào Shadowrocket (Config → Rules)
-
-Shadowrocket sẽ chặn các domain đó.
+## Lưu ý
+App quản lý danh sách và trạng thái. Chặn toàn hệ thống thật sự cần **Network Extension**, yêu cầu Apple Developer Account và entitlement đặc biệt (không hoạt động đầy đủ với IPA sideload thông thường).
 
 ## Build IPA
-Actions → Build QC Modules IPA → Run workflow
+Vào **Actions** → **Build QC Modules IPA** → **Run workflow**
