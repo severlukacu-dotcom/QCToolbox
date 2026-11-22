@@ -1,16 +1,24 @@
-# WQ Files
+# QC Toolbox
 
-File browser kiểu WQFiles (truy cập Documents của app).
+App mở module và config thẳng sang Shadowrocket.
 
-## Tính năng
-- Duyệt thư mục Documents
-- Xem file text (txt, json, plist, xml...)
-- Tạo thư mục
-- Xóa file / thư mục
-- Hiển thị kích thước
+## Trong app
+- Tab Module: chặn quảng cáo, chặn theo dõi Apple, chống rò DNS
+- Tab Config: bộ quy tắc (tự thêm node trong Shadowrocket, app không kèm máy chủ hay mật khẩu)
+- Tab Của tôi: dán URL https của bạn, lưu trên máy
 
-## Lưu ý
-Bản này chỉ truy cập sandbox của chính app. Để xem dữ liệu app khác cần kỹ thuật worse_query (như WQFiles gốc) và iOS 26/27.
+Nút mở dùng URL scheme:
+- Module: `shadowrocket://install?module=`
+- Config: `shadowrocket://config/add/`
+
+## Đã bỏ
+- Duyệt file Documents (WQ Files)
+- Packet Tunnel
+- Backend video
+
+Không có module mở khóa Premium / Pro / VIP.
 
 ## Build IPA
-Actions → Build QC Modules IPA → Run workflow
+Actions → **Build QC Toolbox IPA** → Run workflow.
+
+Artifact `QC-Toolbox-unsigned.ipa` không ký. Tự ký bằng Apple ID của bạn (Sideloadly hoặc AltStore) rồi cài. Repo không chứa chứng chỉ ký.

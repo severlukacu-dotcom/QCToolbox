@@ -3,38 +3,28 @@
 <plist version="1.0">
 <dict>
     <key>CFBundleDisplayName</key>
-    <string>WQ Files</string>
-
+    <string>QC Toolbox</string>
     <key>CFBundleIdentifier</key>
     <string>Azor5212</string>
-
     <key>CFBundleExecutable</key>
     <string>QCModules</string>
-
     <key>CFBundlePackageType</key>
     <string>APPL</string>
-
     <key>CFBundleVersion</key>
     <string>1</string>
-
     <key>CFBundleShortVersionString</key>
     <string>1.0</string>
-
     <key>UILaunchScreen</key>
     <dict/>
-
     <key>UISupportedInterfaceOrientations</key>
     <array>
         <string>UIInterfaceOrientationPortrait</string>
     </array>
-
     <key>UIViewControllerBasedStatusBarAppearance</key>
     <true/>
-
-    <key>UIFileSharingEnabled</key>
-    <true/>
-
-    <key>LSSupportsOpeningDocumentsInPlace</key>
-    <true/>
+    <key>LSApplicationQueriesSchemes</key>
+    <array>
+        <string>shadowrocket</string>
+    </array>
 </dict>
 </plist>

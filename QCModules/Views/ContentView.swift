@@ -1,205 +1,195 @@
 import SwiftUI
+import UIKit
 
 struct ContentView: View {
-    @State private var path: [String] = []
-    @State private var items: [FileItem] = []
-    @State private var selected: FileItem?
-    @State private var showText = false
-    @State private var textContent = ""
-    @State private var error = ""
+    @Environment(\.openURL) private var openURL
+    @State private var tab = 0
+    @State private var query = ""
+    @State private var custom: [ResourceItem] = ResourceStore.loadCustom()
+    @State private var draftName = ""
+    @State private var draftURL = ""
+    @State private var draftType: ResourceType = .module
+    @State private var message: String?
 
-    private var currentURL: URL {
-        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        return path.reduce(docs) { $0.appendingPathComponent($1) }
+    private var visible: [ResourceItem] {
+        let base: [ResourceItem]
+        switch tab {
+        case 0: base = ResourceStore.modules
+        case 1: base = ResourceStore.configs
+        default: base = custom
+        }
+        let q = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if q.isEmpty { return base }
+        return base.filter {
+            $0.name.lowercased().contains(q)
+                || $0.detail.lowercased().contains(q)
+                || $0.tag.lowercased().contains(q)
+        }
     }
 
     var body: some View {
-        NavigationView {
-            List {
-                if !error.isEmpty {
-                    Section {
-                        Text(error).foregroundColor(.red).font(.caption)
-                    }
+        NavigationStack {
+            VStack(spacing: 0) {
+                Picker("Mục", selection: $tab) {
+                    Text("Module").tag(0)
+                    Text("Config").tag(1)
+                    Text("Của tôi").tag(2)
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal)
+                .padding(.top, 8)
+
+                TextField("Tìm", text: $query)
+                    .textFieldStyle(.roundedBorder)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .padding(.horizontal)
+                    .padding(.vertical, 8)
+
+                if tab == 2 {
+                    customForm
                 }
 
-                Section(header: Text(path.isEmpty ? "Documents" : path.joined(separator: " / "))) {
-                    if items.isEmpty {
-                        Text("Thư mục trống")
-                            .foregroundColor(.secondary)
+                List {
+                    if visible.isEmpty {
+                        Text(tab == 2 ? "Chưa có liên kết. Thêm URL https ở trên." : "Không có mục khớp.")
+                            .foregroundStyle(.secondary)
                     } else {
-                        ForEach(items) { item in
-                            HStack {
-                                Image(systemName: item.isDir ? "folder.fill" : icon(for: item.name))
-                                    .foregroundColor(item.isDir ? .yellow : .blue)
-                                    .frame(width: 28)
-
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(item.name)
-                                        .font(.system(size: 15))
-                                    if !item.isDir {
-                                        Text(item.size)
-                                            .font(.caption2)
-                                            .foregroundColor(.secondary)
-                                    }
-                                }
-
-                                Spacer()
-
-                                if item.isDir {
-                                    Image(systemName: "chevron.right")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                }
-                            }
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                if item.isDir {
-                                    path.append(item.name)
-                                    load()
-                                } else {
-                                    openFile(item)
-                                }
-                            }
-                        }
-                        .onDelete { offsets in
-                            delete(at: offsets)
+                        ForEach(visible) { item in
+                            row(item)
                         }
                     }
                 }
+                .listStyle(.insetGrouped)
+            }
+            .navigationTitle("QC Toolbox")
+            .alert("Thông báo", isPresented: Binding(
+                get: { message != nil },
+                set: { if !$0 { message = nil } }
+            )) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(message ?? "")
+            }
+        }
+    }
 
-                Section("Công cụ") {
-                    Button(action: createFolder) {
-                        Label("Tạo thư mục", systemImage: "folder.badge.plus")
-                    }
-                    Button(action: { load() }) {
-                        Label("Làm mới", systemImage: "arrow.clockwise")
-                    }
+    private var customForm: some View {
+        VStack(spacing: 8) {
+            Picker("Loại", selection: $draftType) {
+                Text("Module").tag(ResourceType.module)
+                Text("Config").tag(ResourceType.config)
+            }
+            .pickerStyle(.segmented)
+
+            TextField("Tên", text: $draftName)
+                .textFieldStyle(.roundedBorder)
+
+            TextField("https://", text: $draftURL)
+                .textFieldStyle(.roundedBorder)
+                .textInputAutocapitalization(.never)
+                .keyboardType(.URL)
+                .autocorrectionDisabled()
+
+            Button(action: addCustom) {
+                Label("Lưu trên máy này", systemImage: "plus")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+        }
+        .padding(.horizontal)
+        .padding(.bottom, 4)
+    }
+
+    private func row(_ item: ResourceItem) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Image(systemName: item.symbol)
+                    .foregroundStyle(Color.teal)
+                Text(item.name)
+                    .font(.headline)
+                Spacer()
+                Text(item.tag)
+                    .font(.caption2)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Color.teal.opacity(0.12))
+                    .clipShape(Capsule())
+            }
+            Text(item.detail)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            HStack {
+                Button {
+                    open(item)
+                } label: {
+                    Label("Mở Shadowrocket", systemImage: "arrow.up.right.square")
                 }
-            }
-            .navigationTitle("WQ Files")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    if !path.isEmpty {
-                        Button(action: goBack) {
-                            Image(systemName: "chevron.left")
-                        }
-                    }
+                .buttonStyle(.borderedProminent)
+                .tint(.teal)
+
+                Button {
+                    UIPasteboard.general.string = item.url
+                    message = "Đã sao chép liên kết."
+                } label: {
+                    Image(systemName: "doc.on.doc")
                 }
-            }
-            .sheet(isPresented: $showText) {
-                TextViewer(content: textContent, name: selected?.name ?? "")
-            }
-            .onAppear { load() }
-        }
-        .navigationViewStyle(.stack)
-        .preferredColorScheme(.dark)
-    }
+                .buttonStyle(.bordered)
 
-    private func load() {
-        error = ""
-        do {
-            let contents = try FileManager.default.contentsOfDirectory(
-                at: currentURL,
-                includingPropertiesForKeys: [.isDirectoryKey, .fileSizeKey],
-                options: [.skipsHiddenFiles]
-            )
-            items = contents.map { url in
-                let isDir = (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false
-                let size = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
-                return FileItem(name: url.lastPathComponent, isDir: isDir, size: formatSize(size))
-            }.sorted { a, b in
-                if a.isDir != b.isDir { return a.isDir }
-                return a.name.localizedCaseInsensitiveCompare(b.name) == .orderedAscending
-            }
-        } catch {
-            self.error = error.localizedDescription
-            items = []
-        }
-    }
-
-    private func goBack() {
-        if !path.isEmpty {
-            path.removeLast()
-            load()
-        }
-    }
-
-    private func createFolder() {
-        let name = "NewFolder_\(Int(Date().timeIntervalSince1970))"
-        let url = currentURL.appendingPathComponent(name)
-        try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
-        load()
-    }
-
-    private func delete(at offsets: IndexSet) {
-        for index in offsets {
-            let item = items[index]
-            let url = currentURL.appendingPathComponent(item.name)
-            try? FileManager.default.removeItem(at: url)
-        }
-        load()
-    }
-
-    private func openFile(_ item: FileItem) {
-        let url = currentURL.appendingPathComponent(item.name)
-        if let data = try? Data(contentsOf: url),
-           let text = String(data: data, encoding: .utf8) {
-            textContent = text
-            selected = item
-            showText = true
-        } else {
-            error = "Không mở được file này"
-        }
-    }
-
-    private func icon(for name: String) -> String {
-        let ext = (name as NSString).pathExtension.lowercased()
-        switch ext {
-        case "txt", "md", "json", "plist", "xml": return "doc.text"
-        case "png", "jpg", "jpeg", "gif": return "photo"
-        case "mp4", "mov": return "film"
-        case "mp3", "m4a": return "music.note"
-        case "zip", "ipa": return "doc.zipper"
-        default: return "doc"
-        }
-    }
-
-    private func formatSize(_ bytes: Int) -> String {
-        if bytes < 1024 { return "\(bytes) B" }
-        if bytes < 1024 * 1024 { return String(format: "%.1f KB", Double(bytes) / 1024) }
-        return String(format: "%.1f MB", Double(bytes) / 1024 / 1024)
-    }
-}
-
-struct FileItem: Identifiable {
-    let id = UUID()
-    let name: String
-    let isDir: Bool
-    let size: String
-}
-
-struct TextViewer: View {
-    let content: String
-    let name: String
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        NavigationView {
-            ScrollView {
-                Text(content)
-                    .font(.system(.body, design: .monospaced))
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding()
-            }
-            .navigationTitle(name)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Đóng") { dismiss() }
+                if tab == 2 {
+                    Button(role: .destructive) {
+                        remove(item.id)
+                    } label: {
+                        Image(systemName: "trash")
+                    }
+                    .buttonStyle(.bordered)
                 }
             }
         }
-        .preferredColorScheme(.dark)
+        .padding(.vertical, 4)
+    }
+
+    private func open(_ item: ResourceItem) {
+        guard let url = ResourceStore.scheme(for: item) else {
+            message = "URL không hợp lệ."
+            return
+        }
+        openURL(url) { accepted in
+            if !accepted {
+                message = "Không mở được Shadowrocket. Hãy cài app rồi thử lại."
+            }
+        }
+    }
+
+    private func addCustom() {
+        let name = draftName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let link = draftURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard name.count >= 2 else {
+            message = "Nhập tên, ít nhất 2 ký tự."
+            return
+        }
+        guard let parsed = URL(string: link), parsed.scheme?.lowercased() == "https" else {
+            message = "Chỉ nhận liên kết https."
+            return
+        }
+        let created = ResourceItem(
+            id: UUID().uuidString,
+            name: name,
+            detail: "Liên kết bạn thêm trên máy này.",
+            url: link,
+            type: draftType,
+            symbol: draftType == .module ? "square.stack.3d.up" : "doc.text",
+            tag: "Của tôi"
+        )
+        custom.insert(created, at: 0)
+        ResourceStore.saveCustom(custom)
+        draftName = ""
+        draftURL = ""
+        message = "Đã lưu."
+    }
+
+    private func remove(_ id: String) {
+        custom.removeAll { $0.id == id }
+        ResourceStore.saveCustom(custom)
     }
 }
